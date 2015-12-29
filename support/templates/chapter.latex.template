@@ -11,7 +11,7 @@
 {{=« »=}}
 «! the '&' below prevents HTML escaping. »
 \title{«& title»}
-\author{Clément Béra}
+\author{Clément Béra (with Stéphane Ducasse - It means that you are the first and single author but that I helped. we did that for Pharo by example too for Damien but you can remove my name too)}
 
 \begin{titlingpage}
     \maketitle

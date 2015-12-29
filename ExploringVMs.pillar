@@ -1,12 +1,14 @@
 ! Context and Stack Machines
 
 
-!! Introduction
+!!!! Introduction
 This lecture is part of a larger set of lecture whose goal is to teach VM internals by building a simple VM. The current lecture presents function activations, function returns and the implementation of closures. 
 
 To succeed, the student has to implement several interpreters with an increasing level of complexity. All the interpreters are designed for a very simple language, SmiLang.
 
 Although it is recommended to implement all the interpreters described in this lecture, the student has only to understand and implement the context interpreters described in Sections 2 and 5 and read the Sections 1 and 7 to continue with the virtual machine lecture. The Ssections 3, 4, and 6 deals with interpreters using a native stack and are not required to understand the next parts of the lecture.
+
+@@todo put real links to sections
 
 !!!! Concepts
 Students will learn the following concepts during this tutorial:
@@ -35,3 +37,166 @@ This tutorial is divided in several sections:
 
 !!!! Thanks
 Thanks to Cyril Ferlicot, Vincent Blondeau for the early reviews and runs of the tutorial.
+
+
+
+! SmiLang: A Simple Integer Language
+
+During this tutorial, the student will implement three interpreters of the language SmiLang. “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and primitive operations on Smis.
+
+
+!! SmiLang Basics
+SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called using with static calls. Every function has to return a value (no procedures). 
+
+
+The Smi language has 7 instructions:
+#	""Function Call"": the instruction holds a reference to the function to call (static call). A function can have 0 or several arguments.
+#	""ReturnTop"": Returns the top of the stack to the calling function activation.
+#	""Push temporary variable"": the instruction holds the index of a temporary variable. The value of this temporary variable has to be pushed on top of stack. The instruction can also be used to push the value of the function argument. In fact, interpreters consider the function arguments as the first temporary variables of the function activation.
+#	""Store into temporary variable"": the instruction holds the index of a temporary variable which value has to be changed. The value to be pushed is on the stack.
+#	""Push Smi constant"": The instruction holds the Smi to push on stack.
+#	""Pop"": pops top of stack.
+#	""Primitive operation between 2 Smis"": In this case, 2 Smis are on top of stack, the instruction pops them and delegates to the host language (Pharo) the computation of the primitive. The result is then pushed on stack.
+
+
+!! SmiLang Examples
+
+Here are three examples that show the whole language:
+@@todo would be really nice to have the bytecode just after
+
+
+!!!! Function one
+
+Function ==one== is a zero argument function which returns the constant Smi 1.
+
+[[[
+one 
+   ^ 1
+]]]
+
+Its bytecode is
+[[[
+	<1> push 1
+	<2> returnTop
+]]]
+
+!!!! Function add:to:
+Function ==add:to:== is a 2 arguments function which adds the values of the 2 arguments and returns it.
+
+
+
+[[[
+add: x to: y
+   ^ y + x
+]]]
+
+!!!! Function example7TempAndCallAndCallArgs
+Function ==example7TempAndCallAndCallArgs== is a zero argument function with two static function calls. It also uses a temporary variable.
+
+[[[
+example7TempAndCallAndCallArgs
+    | t | 
+	t := call one. 
+	^ call: t to: 2
+]]]
+
+Its bytecode is
+[[[
+	<1> call one
+	<2> storeTemp: 1
+	<3> pop
+	<4> pushTemp: 1
+	<5> push 2
+	<6> call add:to:
+	<7> returnTop
+]]]
+
+
+!!! We are set
+
+The complete SmiLang has been introduced. This language may not be usable for a real application but it is perfect for our exercise which consists of the different implementations of function calls and returns.
+
+
+! Context Interpreter
+
+A context interpreter is a language interpreter which manipulates objects (called contexts) which represent the call stack. 
+
+
+!! What is a Context ?
+
+A Context is an object or a data structure (depending on the implementing language) which represents a function activation. In this tutorial, contexts are instances of the class ==SmiContext==.
+
+A Context holds information such as:
+- The values of local variables
+- The program counter (also called instruction pointer)
+- The function being executed (because the function holds the instruction to be executed)
+- The context that activated it (also called caller or sender)
+
+Figure *@context1* shows a given computation state showing the relationships between context, stack, function and instructions in SmiLang.
+
+
++Relationships between Context, Stack, Function and Instructions in a context interpreter.>file://figures/context1.png|width=60|label=context1+
+
+@@todo Pointer function should point to the box not the Class name. Same for stack
+
+Let us explain this Figure class by class.
+
+!!!! Context.
+- The sender field of the Context references another context, the one which activated it. Such context chain is created during function call: the sender context is a function activation with a call to the context function.
+- The program counter field holds 3, which means the next instruction the Interpreter will execute is the third instruction of the function.
+- The function field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed. 
+- The stack pointer field holds 6, which means that in the space allocated for this specific context stack, which is in our case 7, only 6 values are currently used and the value at position 6 is the top of the stack.
+- Lastly, the context references the stack. The context’s stack values are specific to the function activation and independent from other contexts. The values are unrelated to other function activations.
+
+!!!! Function.
+- ==Function name== is useful for debugging purpose.
+- ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler.= The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value.
+- Max stack size. For performance reason, the Context, on creation, allocate for its stack enough space for the maximum size its stack can have. The maximum size that the stack can have is specified in the function by the compiler (see field name max stack size which holds 7 in  Figure *@context1*). 
+
+
+
+!!!! Stack.
+
+The stack is associated to a context for a function activation. This stack has not a regular stack API such as ==push:== or ==pop==. It has API such as ==at:== or ==at:put:== that the context uses  based on the current stackPointer to do stack operations. For example, ==(stack at: stackPointer)== is the equivalent of ==stack top==.
+
+The stack is composed in order as follow:
+- The values of the function arguments.
+- The values of the temporary variables.
+- The spilled values, which are the values pushed on stack by previously executed instructions.
+
+!! Concrete Example: Ativation of function add:to:
+
+Remember ==add:to:== function definition is: 
+
+[[[
+add: x to: y
+   ^ y + x
+]]]
+
+This function is invoked in particular by the function ==example7TempAndCallAndCallArgs==. 
+[[[
+example7TempAndCallAndCallArgs
+    | t | 
+	t := call one. 
+	^ call: t to: 2
+]]]
+
+In Figure *@context2*, the Context represents the activation of the function ==add:to:== within the function ==example7TempAndCallAndCallArgs==.
+
+The sender field holds the activation of the function ==example7TempAndCallAndCallArgs==. As we can see, the function has a call to function ==add:to:==.
+
++Context and collaborators for the ==add:to:== call in ==example7TempAndCallAndCallArgs==.>file://figures/context2.png|width=60|label=context2+
+
+
+The programCounter is 2, which means that 
+- the  first instructions ==1| pushTemp 2== has already been done or is currently being done.
+- The second instruction, ==2| pushTemp 1== is the next instruction to be executed. Note that in most interpreter implementations, the ==pushTemp== instruction works both for arguments and temporary variables depending on the value of the temp index encoded in the instruction. For store, it consumes the value on the stack. For fetch, it pushes the value on the stack. In this case the instruction is used to access the arguments values.
+
+The function field holds a reference to the function ==add:to:==. This function has 2 arguments, 0 temporary variables and a stack that can go up to 4 slots. It has a list of 4 instructions.
+
+The current stack holds the values of the 2 arguments and the spilled value 2 due to the first instruction ==1| pushTemp 2== that has been executed.
+
+
+!! Interpretation
+
+more later....
