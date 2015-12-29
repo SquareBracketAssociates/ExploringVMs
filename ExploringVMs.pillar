@@ -1,0 +1,37 @@
+! Context and Stack Machines
+
+
+!! Introduction
+This lecture is part of a larger set of lecture whose goal is to teach VM internals by building a simple VM. The current lecture presents function activations, function returns and the implementation of closures. 
+
+To succeed, the student has to implement several interpreters with an increasing level of complexity. All the interpreters are designed for a very simple language, SmiLang.
+
+Although it is recommended to implement all the interpreters described in this lecture, the student has only to understand and implement the context interpreters described in Sections 2 and 5 and read the Sections 1 and 7 to continue with the virtual machine lecture. The Ssections 3, 4, and 6 deals with interpreters using a native stack and are not required to understand the next parts of the lecture.
+
+!!!! Concepts
+Students will learn the following concepts during this tutorial:
+
+- Context interpreter
+-	Stack Interpreter
+-	Stack page management
+-	Closure creation and activation
+--	Remote temporary variable access
+--	Non- local returns
+
+
+!!!! Outline
+
+This tutorial is divided in several sections:
+#	Description of the SmiLang language
+#	Implementation of a simple context interpreter
+#	Implementation of a simple stack interpreter
+#	Addition of stack page management in to the stack interpreter
+#	Introduction of naive closures in to the context interpreter
+#	Introduction of real closures in to the stack interpreter
+#	Discussion: what are the difference between the Smalltalk model and the SmiLang model
+
+
+
+
+!!!! Thanks
+Thanks to Cyril Ferlicot, Vincent Blondeau for the early reviews and runs of the tutorial.

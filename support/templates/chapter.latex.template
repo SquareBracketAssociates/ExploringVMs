@@ -1,0 +1,24 @@
+% -*- mode: latex; -*-
+\ifx\wholebook\relax\else
+
+	\documentclass[10pt,twoside,english]{root/support/latex/sbabook/sbabook}
+  \usepackage{import}
+  \subimport{root/support/latex/}{common.tex}
+
+	\begin{document}
+\fi
+
+{{=« »=}}
+«! the '&' below prevents HTML escaping. »
+\title{«& title»}
+\author{Clément Béra}
+
+\begin{titlingpage}
+    \maketitle
+\end{titlingpage}
+
+«& content»
+
+\ifx\wholebook\relax\else
+\end{document}
+\fi
