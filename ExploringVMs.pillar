@@ -352,3 +352,46 @@ A good ==StackInterpreter== needs to be implemented in a way that returns and ca
 
 ! Naive closures in the Context Interpreter
 
+!! Introduction
+
+In this section the student will introduce closures the context interpreter.
+
+A closure is an object that references a function and an environment, as represented on figure *@closure*. In this implementation, the function will be anonymous and the environment is the context in which the closure was created. We call the environment refered by a closure the closure’s outer context.
+
++Closure representation.>file://figures/closure.pdf|width=75|label=closure+
+
+In addition to regular function, closure’s function activation (contexts representing closure activations) can access the closure, as represented on figure *@closureContext*. 
+
++Context versus Closure Context.>file://figures/closureContext.pdf|width=70|label=closureContext+
+
+If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. We call the ""outer context chain"" the list of outer context from the closure’s direct outer context to the first context which is not a closure activation. Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
+
++Outer context chain.>file://figures/OuterContextChain.pdf|width=100|label=OuterContextChain+
+
+In this implementation, the interpreter uses the closure’s outer context for two different purposes:
+- Remote temporary access
+- Non local return
+
+!!! Remote temporary access
+
+The first feature, present in most language having closures, is the access of remote temporary variables. The closure’s function can access temporary variables that are held not in the current context, but in the closure’s outer context. In addition, if the closure outer context is already a closure activation, the closure activation can access the temporary variables of the closure’s outer context’s closure’s outer context. In case of a closure nested many times, the function can access all the temporary variables of all the enclosing contexts.
+
+!!! Non local return
+
+The second feature, present at least in Ruby in the form of Procedure returns and in Smalltalk, is called non local return. When a closure’s activation performs a non local return, it returns from the closure’s home context instead of the closure’s context sender. To learn more about non local return, you can read the section ""14.4 Returning from inside a Block"" from the book ""Deep into Pharo"".
+
+!! New instructions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
