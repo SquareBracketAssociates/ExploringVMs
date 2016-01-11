@@ -5,3 +5,6 @@
 /pharo-vm
 /pillar
 /pillarPostExport.sh
+/package-cache
+.DS_Store
+PharoDebug.log

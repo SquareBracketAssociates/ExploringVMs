@@ -167,7 +167,7 @@ In Figure *@context2*, the Context represents the activation of the function ==a
 
 The sender field holds the activation of the function ==example07TempAndCallAndCallArgs==. As we can see, the function has a call to function ==add:to:==.
 
-+Context and collaborators for the ==add:to:== call in ==example07TempAndCallAndCallArgs==.>file://figures/context2.pdf|width=75|label=context2+
++Context and collaborators for the ==add:to:== call in ==example07TempAndCallAndCallArgs==.>file://figures/context2.pdf|width=78|label=context2+
 
 The programCounter is 2, which means that 
 - the  first instructions ==1| pushTemp 2== has already been done or is currently being done.
@@ -184,6 +184,8 @@ The current stack holds the values of the 2 arguments and the spilled value 2 du
 
 The figure *@contextInterpretation1* shows the state of a context's stack at each pc during the execution of 1 + 2.
 
++Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=70|label=contextInterpretation1+ 
+
 - ""Step 1"": When the interpretation of 1 + 2 starts, stack pointer is at 0, 2 slots are already allocated on stack for the computation, pc is 1.
 
 - ""Step 2"": First instruction execution (pushSmi 1): the constant 1 is pushed on stack. StackPointer is now 1.
@@ -192,10 +194,37 @@ The figure *@contextInterpretation1* shows the state of a context's stack at eac
 
 - ""Step 4"": Third instruction execution (primitive +):  the two constants are popped from the stack, the interpreter computes the result (by asking the host language or the cpu) , and pushes the result on stack. The stack pointer is now 1. The value at the second stack position is 2 but it should not be reached by execution any more.
 
-+Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=75|label=contextInterpretation1+
+""Example 2:"" Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
 
-""Example 2:"" Interpretation of ==temp1 :\= 1. temp2 :\= temp1 + 3.==
++Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=75|label=contextInterpretation2+
 
-+Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation1.pdf|width=75|label=contextInterpretation1+
+The first steps of the interpretation are drawn in figure *@contextInterpretation2*. Try to draw or imagine the next steps.
 
-The first steps of the interpretation are drawn. Try to draw or imagine the next steps
+!! Calls and Returns
+
+In the two first examples we described the instructions that applied inside a function activation. Now let’s discuss the two interesting instructions, function calls and returns. They require the creation or the termination of a function activation.
+
+!!! Function calls
+
+The call instruction creates a new context, pops the arguments from the top of the stack and copy them to the new context’s stack. It then proceeds execution in the freshly created context. Indeed, remember that prior to the call execution, the argument values are in top of the stack of the current context. Once the call is actually performed, the arguments are the first elements of the stack followed by the temporaries of the new function.
+
+!!! Returns
+
+The returnTop instruction pushes the top of stack of the active context on the top of stack of the sender context. It then terminates the active context and resumes execution in the sender context.
+
+!! Build a Context Interpreter
+
+In this exercise, you will build a context Interpreter.
+
+Open a Pharo 4 image, load the package SmiLang you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+
+Go to the package tag ==SmiLang>>Context== interpreter. A class SmiContext is given and is a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+
+The interpretation starts with a fake Context which holds flags. The Interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, precise the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
+
+The SmiContextInterpreterTests have to pass.
+We suggest to look at the code and the compiled version of the examples.
+
+Good luck and have fun.
+
+! Simple Stack Interpreter
