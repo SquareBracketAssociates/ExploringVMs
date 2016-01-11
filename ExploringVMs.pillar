@@ -228,3 +228,127 @@ We suggest to look at the code and the compiled version of the examples.
 Good luck and have fun.
 
 ! Simple Stack Interpreter
+
+In this section the student will build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
+
+The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". In subsequent implementation we will deal with limited memory stack using stack pages. 
+But let us start by discussing the limits of our first naïve context interpreter.
+
+There are different issues to the Context Interpreter performance-wise:
+
+- Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments (hence they would stay in the caller context), then a context needs additional far memory reads to access its arguments, which is in practice even slower.
+- A second problem is that Contexts are separate data structures and hence can be allocated by the host language, like C, far from each other. This implies that memory reads are spread in the memory and this is problematic for performance (mismatch with cpu caches). 
+- Another issue is that hardware-implemented cpu instructions like calls and returns are difficult or even impossible to use directly with contexts when in the future the developer will add a just-in-time compiler.
+
+!! Call Stack
+
+In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack".
+
++Representation of a native stack.>file://figures/stack1.pdf|width=75|label=stack1+
+
+The figure *@stack1* describes the representation of a native stack.
+
+The native stack holds information relative to each context next to each other. Assuming that the stack grows down, the data up to a stack frame is related to the sender of the function activation and the data down is related the function called by the activation. 
+
+The interpreter, instead of knowing the active context, knows directly the state of the active function activation: 
+- the active function
+- the pc (program counter) being executed
+- the active frame pointer: it points to the beginning of the function activation in the native stack
+- the stack pointer, it points to the top of the native stack and the top of active stack frame (they are the same). Values will be pushed and popped there.
+
+In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
+- Temporaries: Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
+- Spilled Values: These values are pushed on top of the stack for the execution by different instructions. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
+- Arguments:When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the lecture).
+- ==Function==, ==pc== and ==frame pointer==: Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, it will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
+
+The active stack frame, i.e. the bottom stack frame, is different. The active function, pc and framepointer are directly held by the interpreter (they are not on stack). In practice, this avoids memory reads and writes if the interpreter variables (currentFunction, pc, framePointer) are in registers instead of in memory.
+
+!!! Concrete example: Activation of the function add:to:
+
+The figure *@stack2* describes the same example than for the context interpreter in Section 2. Don’t hesitate to compare both architectures if you don’t understand everything.
+
+[[[eval=true
+stream << (SmiExamples>>#add:to:) sourceCode asPillarSourceCode.
+]]]
+
++Representation of a native stack.>file://figures/stack2.pdf|width=75|label=stack2+
+
+The interpreter holds:
+- A reference to the function being executed, the function ==add:to:==
+- The pc of the next instruction to execute, 2
+- The frame pointer corresponding to the beginning of the current stack frame for the activation of the method ==add:to:==
+- The stack pointer, which is the last value being used on stack and the top of the active stack frame
+
+The active stack frame starts with a framePointer which refers to the framePointer of the previous stack frame, i.e., the beginning of the previous stack frame. For example, in figure *@stack2* the interpreter frame pointer points to slot 9 which refers to the previous stack frame start.
+
+!! Temporary access
+
+We assume that the compiler forbids writing into the function arguments (compilation error). Hence, the store into temporary variable instruction remains simple as it assumes the temp index is the index of a temporary variable. Remember that the temporaries are now stored at the beginning of the stack frame (just after the frame pointer).
+
+The ==pushTemp== instruction is different. Depending on the tempIndex and the value of numArgs in the function, two cases are found:
+
+- ""The tempIndex corresponds to an argument."" Its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of argument and add the tempIndex to access the correct field.
+
++Representation of a native stack.>file://figures/tempAccess1.pdf|width=75|label=tempAccess1+
+
+- ""The tempIndex corresponds to a temporary variable."" Hence we can access the value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame.
+
++Representation of a native stack.>file://figures/tempAccess2.pdf|width=75|label=tempAccess2+
+
+!! Call Instruction
+
+The call instruction is different from the context interpreter as one needs to update the interpreter state and create a new stack frame instead of simply creating a new context.
+
+The call instruction works as follow:
+- Pushes the pc, the active function and the frame pointer on stack.
+- Sets up the stack zone after the new frame pointer with only slots for temporary variables (no slots for arguments as they are accessed from the caller frame). It usually implies to update the stackPointer and set the temporary variable fields to a default value (0 in our case).
+
+!! Return instructions
+
+The return instruction needs to:
+- Pop the stack until the previous frame state. This means popping the stack up to the previous frame pointer, then popping and restoring the previous active function, frame pointer and pc, and lastly popping the arguments of the function call.
+- Push the returned result on stack
+
+!! Build a stack interpreter
+
+In this exercise you will build a Stack Interpreter.
+
+Open a Pharo 4 image, load the package ==SmiLang== you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+
+Go to the package tag ==SmiLang>>Stack interpreter==. A ==SmiStackInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+
+The interpretation starts with a fake stack frame which holds flags. The Interpreter then calls a function (the public API, ==#interpret:==, specified in the public method protocol, defines the function to call). The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
+
+The ==SmiStackInterpreterTests== have to pass to proceed the lecture. 
+
+Good luck and have fun !
+
+! Stack pages
+
+!!! Problem
+
+The Stack interpreter previously built is nice but it has a critical flaw. It considers the stack to be infinite. This is not possible as you need to specify to the computer a size to allocate for the stack. This size can’t be too big because if the program uses multiple processes, each process requires a separate stack. 
+
+!!! Solution
+
+A common solution is to split the stack into stack pages of limited size. When the bottom of a stack page is reached, the interpreter switch to a new stack page. The stack pages are created at interpreter start-up and there are of  limited number. Once all the pages are full, different strategies exist depending on the language you want to implement:
+- Raise a StackOverflow error
+- Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
+
+!!! Implementation
+
+The implementation is as follow:
+- On function activation, in addition to what is done in the ==StackInterpreter==, the interpreter estimates the stack frame size based on the max stack size field of the function. If there is not enough room in the stack page for the next stack frame, the interpreter switches to a new stack page.
+- On return, in addition to the ==StackInterpreter== behavior, if at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page can be marked (for example, the saved pc can be saved as a negative value) so the interpreter knows it has to do a return across stack pages.
+
+!!! Exercise
+
+As an exercise, have the ==SmiStackInterpreterWithStackPagesTests== pass by implementing the ==SmiStackInterpreterWithStackPages==.
+
+!!! Comment
+
+A good ==StackInterpreter== needs to be implemented in a way that returns and calls across stack pages are uncommon because they are slower than regular calls and returns. For example, if the interpreter notices that many calls are done across stack pages, it would copy the bottom stack frame of the previous page to the beginning of a new page.
+
+! Naive closures in the Context Interpreter
+
