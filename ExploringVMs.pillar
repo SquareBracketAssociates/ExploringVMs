@@ -366,7 +366,7 @@ In addition to regular function, closure’s function activation (contexts repre
 
 If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. We call the ""outer context chain"" the list of outer context from the closure’s direct outer context to the first context which is not a closure activation. Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
 
-+Outer context chain.>file://figures/OuterContextChain.pdf|width=100|label=OuterContextChain+
++Outer Context chain.>file://figures/OuterContextChain.pdf|width=100|label=OuterContextChain+
 
 In this implementation, the interpreter uses the closure’s outer context for two different purposes:
 - Remote temporary access
@@ -407,7 +407,107 @@ Good luck and have fun !
 
 ! Simplified Closures in the Stack Interpreter
 
+In the two next sections you will introduce the closures in the stack interpreter.
+
+The two next sections, especially the next one, are ""considerably"" more complex than the other sections. As explained in the introduction, these sections are optional for the overall virtual machine lecture.
+
+!! Problems
+
+The naive closure model described in the previous section is nice to understand closure activation but is completely broken in the stack interpreter. The main issue lies with terminated function activations.
+
+A closure has a reference to a function and its outer context. It can happen that a closure outer context is terminated, in which case the closure’s actvation cannot perform a non local return. However, it can still access the terminated outer context temporaries.
+
+In the stack interpreter we have no contexts. The closure still needs to reference its enclosing environment for non local returns and remote temporary access. A naive implementation would be to have the closure referencing its outer stack frame. The problem in this case is that when the outer stack frame execution is terminated, the memory location for the stack frame is overridden by new activations. It is therefore impossible to know if the reference to the outer stack frame still refers to the stack frame or to random data from the stack.
+
+If the outer stack frame happens to be terminated, we have two issues. 
+
+# ""Remote temporary access"": Firstly, if the closure’s activation tries to access remote temporary variables, the dead outer stack frame does not hold any more the temporary values. Even worse, the values may have been overriden by new stack frames.
+# ""Non local returns"": Secondly, if the closure’s activation tries to perform a non local return, it has to figure out if the closure home context is dead to raise a BlockCannotReturn exception or not. The problem is that the home’s stack frame may be dead but also overridden with another stack frame. It is impossible in the current state to know if the data at the memory location of the home stack frame corresponds to the home stack frame or something else.
+
+!! Solutions
+
+We identified two problems so we need to describe two solutions. In this section, you will build a restrictive interpreter that cannot handle non local returns. It will implements the solution for remote temporary access, but not the one for non local return. In the next section, you will enhance the interpreter to support non local returns.
+
+This subsection explains how to deal with remote temporary variables.
+
+If a closure outlives its outer stack frame, the outer stack frame field may have been overridden by new values and we can’t access the temporary variables. To solve this problem, the compiler will identify temporary variables that are accessed from multiple stack frames. Such variables will not be stored on stack, but on an array allocated outside of the stack, also called temp vector. In this implementation, the temp vector will be a Pharo array. 
+
+When a closure is created, if it needs to access remote temporaries, it keeps a reference to a temp vector in addition to its anonymous function and its outer environment. Specific instructions are added in the language to support access to temporaries in temp vectors and to create closure with temp vector. We discuss these instructions in the next section.
+
+If a regular function (non closure function) holds an instruction which creates a closure and that the closure access the regulr function temporaries, then the regular function starts with a create temp  vector instruction. This instruction creates the temp vector and pushes it on top of stack. The function then stores the temp vector in a temporary variable slot. Further access in the method to the temporaries accessed from multiple stack frame are done through the temp vector. 
+
+Upon closure activation, if the closure has a temp vector reference, the temp vector is pushed on stack after the arguments and before the temporary variables. The instruction accessing remote temporary variables will allow the execution to access the temp vector’s values.
+
+!! Extended instruction set
+
+In order to use closures in the stack interpreter, we extend SmiLang (the non closure interpreter version) with 6 new instructions:
+
+[[[eval=true
+  SmiStackClosureCompiler usedInstructions do: [ :each |
+	stream 
+		<< '- ""'
+		<< (each name allButFirst: 3)
+		<< '""'
+		<< String cr
+		<< each comment
+		<< String cr ].
+]]]
+
+!! Exercise
+
+In this ultimate exercise you will extend your ==StackInterpreter== with a subclass, ==SimplifiedClosureStackInterpreter==. You will subclass directly the ==StackInterpreter== and not the one with stack pages. It is possible to have a closure stack interpreter with stack pages, but you don’t need to deal with the complexity of both to understand the concepts.
+
+Open a Pharo 4 image, load the package ==SmiLang-StackClosureExtension== you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+
+Go to the package tag ==SmiLang-StackClosureExtension>>stack interpreter==. A ==SmiSimplifiedClosureStackInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+
+The ==SmiSimplifiedClosureStackInterpreterTests== have to pass to finish the lecture. This exercise is more difficult than the previous ones because of the temp vectors and the non local returns implementations.
+
+Good luck and have fun !
+
 ! Real Closures in the Stack Interpreter
+
+In this section we extend the previous interpreter to support non local returns.
+
+!! Non local return implementation
+
+This is one of the trickiest part of the implementation. Now that remote temporary variables are accessed through a temp vector, the closure’s outer context is needed only for non local return.
+
+For non local return, we will change our stack frame representation. After the frame pointer and before the references to the temporary variables, we will keep two fields in each stack frame. This implies that accessing temporary variables in the stack interpreter with closures requires to shift the framePointer by an additionnal 2 for the extra two fields.  At stack frame creation time, the stack pointer needs also to be pushed by an additionnal 2 to make room for the two fields. The fields will be used for a stack frame wrapper and the reference to the closure.
+
++New stack frame representation.>file://figures/stackRepresentation2.pdf|width=70|label=stackRepresentation2+
+
+At stack frame creation time, if the stack frame represents a closure activation, the closure field is set to refer to the closure, else it is set to a specific flag (you can use symbols for flags in your implementation) to mark that the frame is not a closure activation. The interpreter can then easily access the closure of the current activation (framePointer + 2).
+
+Still at stack frame creation time, the stack frame wrapper field is set to another flag with marks the stack frame as not being wrapped. When a closure is created in the stack frame, the stack frame needs to be wrapped (if not already wrapped). A stack frame wrapper is an object allocated aside from the stack. It has a single field that refers to the frame pointer location of the stack frame it wraps. Wrapping a stack frame implies the creation of the stack frame wrapper with refers to the stack frame and to set the stack frame wrapper field of the stack frame to the stack frame wrapper.
+
+Instead of keeping a reference to their outer context as in the context interpreter, closures keep a reference to their outer stack frame’s stack frame wrapper.
+
++Stack frame wrapper model.>file://figures/stackFrameWrapper.pdf|width=70|label=stackFrameWrapper+
+
+Each stack frame knows if it is already wrapped by checking its stack frame wrapper field:
+- If the value is the flag set at stack frame creation time, then it is not wrapped
+- If the value is not the flag, then it is wrapped and the value of the field is the stack frame wrapper.
+
+On ther other hand, it’s a bit more complex for the stack frame wrapper to know it the stack frame it wraps is still valid. This is a two step operations.
+
+Firstly, it needs to figure out if the stackFramePointer references to a frame pointer. If the stack frame has been terminated, it may have been overrided by other frames of different size and the stackFramePointer location may be a random field in another stack frame and not the stack frame wrapper. To do so, it walks the stack starting at the interpreter’s active frame pointerfrom a frame pointer to the next one, until it finds a frame pointer matching the stackFramePointer. If it finds a matching frame pointer, then the stack frame wrapper references a stack frame, but it does not know yet if it references the stack frame it wraps or another one. If no matching frame pointer are found, then the stack frame is dead.
+
+Secondly, the stack frame wrapper now knows it references a stack frame. It can then read the stack frame wrapper field of the stack frame. If the field refers to the stack frame wrapper, then the stack frame is still live. If it refers the flag or another stack frame wrapper, then the stack frame is dead.
+
+To perform a non local return, the interpreter walks the outerFrameWrapper chain from its active closure. If any stack frame wrapper on the chain refers to a dead stack frame, then a BlockCannotReturn exception is raised. If it successfully finds the live home stack frame, then the non local return can be performed.
+
+!! Exercise
+
+In this last exercise you will extend your ==SimplifiedClosureStackInterpreter== with a subclass, ==RealClosureStackInterpreter==. 
+
+Open a Pharo 4 image, load the package ==SmiLang-StackClosureExtension== you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+
+Go to the package tag ==SmiLang-StackClosureExtension>>stack interpreter==. A ==SmiRealClosureStackInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+
+The ==SmiRealClosureStackInterpreterTests== have to pass to finish the lecture. This exercise is more difficult than the previous ones because of the temp vectors and the non local returns implementations.
+
+Good luck and have fun !
 
 ! Discussion
 
@@ -429,7 +529,6 @@ A Smalltalk send does a lookup to find the method to activate and then activate 
 About the context, there are one main difference. In Smalltalk, the receiver is for the function activation the equivalent of the first argument. However, the receiver is special as it’s the only variable from which the interpreter can directly access its instance variables and it’s the variable used for the lookup.
 
 You can now look into the ==Context== class in Pharo and verify that you understand what the instance variables correspond to and how they are used. You can also inspect some contexts and verify that you understand their states. Closures are slightly more complex in Pharo than in SmiLang, because there are a few optimisations to decrease their memory footprint and improve their performance. 
-
 
 !! Correction
 
