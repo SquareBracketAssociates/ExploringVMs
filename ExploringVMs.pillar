@@ -497,6 +497,10 @@ Secondly, the stack frame wrapper now knows it references a stack frame. It can 
 
 To perform a non local return, the interpreter walks the outerFrameWrapper chain from its active closure. If any stack frame wrapper on the chain refers to a dead stack frame, then a BlockCannotReturn exception is raised. If it successfully finds the live home stack frame, then the non local return can be performed.
 
+!! Non local return instruction
+
+As described in the previous subsection, to execute this instruction the interpreter needs to walk up the outer stack frame chain to find the home stack frame. If any outer stack frame relation is broken (a stack frame wrapper does not refer to its stack frame any more), then a BlockCannotReturn exception is raised. Once the home stack frame is found, the execution can return the the home’s sender stack frame, pushing the correct non local value on top of its stack.
+
 !! Exercise
 
 In this last exercise you will extend your ==SimplifiedClosureStackInterpreter== with a subclass, ==RealClosureStackInterpreter==. 
