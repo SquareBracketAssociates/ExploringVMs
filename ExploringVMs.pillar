@@ -272,7 +272,7 @@ The figure *@stack2* describes the same example than for the context interpreter
 stream << (SmiExamples>>#add:to:) sourceCode asPillarSourceCode.
 ]]]
 
-+Representation of a native stack.>file://figures/stack2.pdf|width=75|label=stack2+
++Example of a native stack.>file://figures/stack2.pdf|width=75|label=stack2+
 
 The interpreter holds:
 - A reference to the function being executed, the function ==add:to:==
@@ -288,13 +288,13 @@ We assume that the compiler forbids writing into the function arguments (compila
 
 The ==pushTemp== instruction is different. Depending on the tempIndex and the value of numArgs in the function, two cases are found:
 
-- ""The tempIndex corresponds to an argument."" Its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of argument and add the tempIndex to access the correct field.
+- ""The tempIndex corresponds to an argument."" Its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of argument and add the tempIndex to access the correct field, as shown on figure *@tempAccess1*.
 
-+Representation of a native stack.>file://figures/tempAccess1.pdf|width=75|label=tempAccess1+
++Accessing the value of an argument.>file://figures/tempAccess1.pdf|width=75|label=tempAccess1+
 
-- ""The tempIndex corresponds to a temporary variable."" Hence we can access the value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame.
+- ""The tempIndex corresponds to a temporary variable."" Hence we can access the value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame, as shown on figure *@tempAccess2*.
 
-+Representation of a native stack.>file://figures/tempAccess2.pdf|width=75|label=tempAccess2+
++Accessing the value of a temporary variable.>file://figures/tempAccess2.pdf|width=75|label=tempAccess2+
 
 !! Call Instruction
 
@@ -382,7 +382,58 @@ The second feature, present at least in Ruby in the form of Procedure returns an
 
 !! New instructions
 
+[[[eval=true
+  SmiClosureCompiler usedInstructions do: [ :each |
+	stream 
+		<< '- ""'
+		<< (each name allButFirst: 3)
+		<< '""'
+		<< String cr
+		<< each comment
+		<< String cr ].
+]]]
 
+!! Exercise
+
+In this exercise you will extend your ==ContextInterpreter== with a subclass, ==ClosureContextInterpreter==.
+
+Open a Pharo 4 image, load the package SmiLang-ClosureExtension you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+
+Go to the package tag ==SmiLang-ClosureExtension>>context== interpreter. A ==SmiClosureContextInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+
+The SmiClosureContextInterpreterTests have to pass to proceed the lecture. 
+
+Good luck and have fun !
+
+! Simplified Closures in the Stack Interpreter
+
+! Real Closures in the Stack Interpreter
+
+! Discussion
+
+!! What about Contexts and Stack frames in Smalltalk ?
+
+In Smalltalk, from the language, the programmer has the impression that a context interpreter is running. This is convenient as the programmer can manipulate the contexts as objects. This feature is used for the implementation of the debugger, exceptions and continuations.
+
+In the VM, the interpreter is implemented as a stack interpreter for performance. Stack frames are mapped to contexts on demand.
+
+Assuming the programmer request to read or write one of the following field into a context, whereas the VM only holds an empty proxy to a stack frame, how do you expect the VM to read or write:
+- Any of the stack values (arguments, temporaries, spilled values) ?
+- The program counter and the function ?
+- The sender (tip: to write into the sender field you can abuse calls and returns across stack pages)
+
+!! What about Smalltalk Context and sends compared to SmiLang ?
+
+A Smalltalk send does a lookup to find the method to activate and then activate the method. In SmiLang, there is no lookup as the calls are static, but the function activation in SmiLang is very similar to the Smalltalk method activation. 
+
+About the context, there are one main difference. In Smalltalk, the receiver is for the function activation the equivalent of the first argument. However, the receiver is special as it’s the only variable from which the interpreter can directly access its instance variables and it’s the variable used for the lookup.
+
+You can now look into the ==Context== class in Pharo and verify that you understand what the instance variables correspond to and how they are used. You can also inspect some contexts and verify that you understand their states. Closures are slightly more complex in Pharo than in SmiLang, because there are a few optimisations to decrease their memory footprint and improve their performance. 
+
+
+!! Correction
+
+In the repository *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*, one can find a package named SmiLang-Correction. It includes a *possible* implementation for each interpreter. 
 
 
 
