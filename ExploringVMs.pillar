@@ -517,7 +517,7 @@ When a closure is created in the stack frame, the stack frame needs to be wrappe
 
 Instead of keeping a reference to their outer context as in the context interpreter, closures keep a reference to their outer stack frame’s stack frame wrapper.
 
-+Stack frame wrapper model.>file://figures/stackFrameWrapper.pdf|width=70|label=stackFrameWrapper+
++Stack frame wrapper model.>file://figures/stackFrameWrapper.pdf|width=75|label=stackFrameWrapper+
 
 !!! Accessing the wrapper from the stack frame
 
