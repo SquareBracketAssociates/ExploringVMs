@@ -491,35 +491,49 @@ Good luck and have fun !
 
 In this section we extend the previous interpreter to support non local returns.
 
+The general idea is that we do not want to make normal returns more complex because the execution overhead is too high. For example, if at each return we need to check if there is a closure referencing the frame, the performance overhead is way too big. The implementation of non local return needs to avoid such constraints.
+
 !! Non local return implementation
 
-This is one of the trickiest part of the implementation. Now that remote temporary variables are accessed through a temp vector, the closure’s outer context is needed only for non local return.
+This is one of the trickiest part of the implementation. Now that remote temporary variables are accessed through a temp vector, the closure needs to keep a reference to its outer stack frame activation only for non local returns.
 
-For non local return, we will change our stack frame representation. After the frame pointer and before the references to the temporary variables, we will keep two fields in each stack frame. This implies that accessing temporary variables in the stack interpreter with closures requires to shift the framePointer by an additionnal 2 for the extra two fields.  At stack frame creation time, the stack pointer needs also to be pushed by an additionnal 2 to make room for the two fields. The fields will be used for a stack frame wrapper and the reference to the closure.
+!!! Stack frame representation
 
-+New stack frame representation.>file://figures/stackRepresentation2.pdf|width=70|label=stackRepresentation2+
+For non local return, we will change our stack frame representation. After the frame pointer and before the references to the temporary variables, we will keep two fields in each stack frame. This implies that accessing temporary variables in this interpreter requires to shift the framePointer by an additionnal 2 for the extra two fields. 
 
-At stack frame creation time, if the stack frame represents a closure activation, the closure field is set to refer to the closure, else it is set to a specific flag (you can use symbols for flags in your implementation) to mark that the frame is not a closure activation. The interpreter can then easily access the closure of the current activation (framePointer + 2).
++New stack frame representation.>file://figures/stackRepresentation2.pdf|width=60|label=stackRepresentation2+
 
-Still at stack frame creation time, the stack frame wrapper field is set to another flag with marks the stack frame as not being wrapped. When a closure is created in the stack frame, the stack frame needs to be wrapped (if not already wrapped). A stack frame wrapper is an object allocated aside from the stack. It has a single field that refers to the frame pointer location of the stack frame it wraps. Wrapping a stack frame implies the creation of the stack frame wrapper with refers to the stack frame and to set the stack frame wrapper field of the stack frame to the stack frame wrapper.
+!!! Stack frame creation
+
+At stack frame creation time (for example a function call), the stack pointer needs also to be pushed by an additionnal 2 to make room for the two fields. The fields will be used for the potential stack frame wrapper (field 1) and the reference to the closure (field 2).
+
+In addition, if the stack frame represents a closure activation, when creating the stack frame the closure field needs to be set to refer to the closure, else it is set to a specific flag (you can use symbols for flags in your implementation) to mark that the frame is not a closure activation. The interpreter can then easily access the closure of the current activation relatively to the frame pointer (framePointer + 2).
+
+Still at stack frame creation time, the stack frame wrapper field is set to another flag with marks the stack frame as not being wrapped. 
+
+!!! Closure creation
+
+When a closure is created in the stack frame, the stack frame needs to be wrapped (if not already wrapped). For this process one needs to understand what a stack frame wrapper is. A stack frame wrapper is a data structure allocated aside from the stack. It has a single field that refers to the frame pointer location of the stack frame it wraps. Wrapping a stack frame implies the creation of the stack frame wrapper so it refers to the stack frame it wraps and to set the stack frame wrapper field of the stack frame to refer to the stack frame wrapper, as shown on figure *@stackFrameWrapper*.
 
 Instead of keeping a reference to their outer context as in the context interpreter, closures keep a reference to their outer stack frame’s stack frame wrapper.
 
 +Stack frame wrapper model.>file://figures/stackFrameWrapper.pdf|width=70|label=stackFrameWrapper+
 
+!!! Accessing the wrapper from the stack frame
+
 Each stack frame knows if it is already wrapped by checking its stack frame wrapper field:
-- If the value is the flag set at stack frame creation time, then it is not wrapped
+- If the value is the flag set at stack frame creation time, then it is not wrapped.
 - If the value is not the flag, then it is wrapped and the value of the field is the stack frame wrapper.
 
-On ther other hand, it’s a bit more complex for the stack frame wrapper to know it the stack frame it wraps is still valid. This is a two step operations.
+!!! Accessing the stack frame from the wrapper
 
-Firstly, it needs to figure out if the stackFramePointer references to a frame pointer. If the stack frame has been terminated, it may have been overrided by other frames of different size and the stackFramePointer location may be a random field in another stack frame and not the stack frame wrapper. To do so, it walks the stack starting at the interpreter’s active frame pointerfrom a frame pointer to the next one, until it finds a frame pointer matching the stackFramePointer. If it finds a matching frame pointer, then the stack frame wrapper references a stack frame, but it does not know yet if it references the stack frame it wraps or another one. If no matching frame pointer are found, then the stack frame is dead.
+It’s more complex for the stack frame wrapper to access its frame because it needs to know if the stack frame it wraps is still valid. This is a two step operations.
 
-Secondly, the stack frame wrapper now knows it references a stack frame. It can then read the stack frame wrapper field of the stack frame. If the field refers to the stack frame wrapper, then the stack frame is still live. If it refers the flag or another stack frame wrapper, then the stack frame is dead.
+Firstly, it needs to figure out if the frame pointer it holds still references to a frame pointer. If the stack frame has been terminated, it may have been overrided by other frames of different size and the stackFramePointer location may be a random field in another stack frame. To do so, it walks the stack starting at the interpreter’s active frame pointer from a frame pointer to the next one, until it finds a frame pointer matching the stackFramePointer. If it finds a matching frame pointer, then the stack frame wrapper references a stack frame, but it does not know yet if it references the stack frame it wraps or another one. If no matching frame pointer are found, then the stack frame is dead.
 
-To perform a non local return, the interpreter walks the outerFrameWrapper chain from its active closure. If any stack frame wrapper on the chain refers to a dead stack frame, then a BlockCannotReturn exception is raised. If it successfully finds the live home stack frame, then the non local return can be performed.
+Secondly, the stack frame wrapper now knows it references a stack frame. It can then read the stack frame wrapper field of the stack frame. If the field refers to the stack frame wrapper itself, then the stack frame is still live. If it refers the flag or another stack frame wrapper, then the stack frame is dead and has been overridden by another stack frame.
 
-!! Non local return instruction
+!!! Performing a non local return
 
 As described in the previous subsection, to execute this instruction the interpreter needs to walk up the outer stack frame chain to find the home stack frame. If any outer stack frame relation is broken (a stack frame wrapper does not refer to its stack frame any more), then a BlockCannotReturn exception is raised. Once the home stack frame is found, the execution can return the the home’s sender stack frame, pushing the correct non local value on top of its stack.
 
