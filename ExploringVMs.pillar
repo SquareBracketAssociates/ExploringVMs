@@ -71,11 +71,11 @@ The Smi language has 7 instructions:
 
 | exampleSelectors selectorTexts |
 
-exampleSelectors := #(#one #add:to: #example7TempAndCallAndCallArgs).
+exampleSelectors := #(#one #add:to: #example07TempAndCallAndCallArgs).
 selectorTexts := {
 	#one -> 'zero argument function which returns the constant Smi 1' .
 	#add:to: -> '2 arguments function which adds the values of the 2 arguments and returns it' .
-	#example7TempAndCallAndCallArgs -> 'zero argument function with two static function calls. It also uses a temporary variable'
+	#example07TempAndCallAndCallArgs -> 'zero argument function with two static function calls. It also uses a temporary variable'
 	} asDictionary.
 	
 stream << 'Here are '.
