@@ -10,11 +10,11 @@ Smalltalk snapshot: true andQuit: false.
 ! Context and Stack Machines
 
 !!!! Introduction
-This lecture is part of a larger set of lecture whose goal is to teach VM internals by building a simple VM. The current lecture presents function activations, function returns and the implementation of closures. 
+This lecture is part of a larger set of lecture whose goal is to teach how to build a simple virtual machine for object oriented programming languages. The current lecture deals with execution stack management and closure implementation. 
 
 To succeed, the student has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang.
 
-Although it is recommended to implement all the interpreters described in this lecture, the student has only to understand and implement the context interpreters described in Sections 2 and 5 and read the Sections 1 and 7 to continue with the virtual machine lecture. The Ssections 3, 4, and 6 deals with interpreters using a native stack and are not required to understand the next parts of the lecture.
+Although it is recommended to implement all the interpreters described in this lecture, the student has only to understand and implement the context interpreters described in Sections 3 and 6 and read the Sections 2 and 9 to continue with the virtual machine lecture. The Sections 4, 5, 7 and 8 deals with interpreters using a native stack and are not required to understand the next parts of the lecture.
 
 %todo put real links to sections
 
@@ -98,11 +98,11 @@ exampleSelectors do: [ :each |
 	stream cr.
 	stream << 'Source code:'.
 	stream cr.
-	stream << (SmiExamples>>#one) sourceCode asPillarSourceCode.
+	stream << (SmiExamples>>each) sourceCode asPillarSourceCode.
 	stream cr.
 	stream << 'Instructions:'.
 	stream cr.
-	stream << (SmiCompiler new compilePharoMethod: (SmiExamples>>#one)) printString asPillarSourceCode. ].
+	stream << (SmiCompiler new compilePharoMethod: (SmiExamples>>each)) printString asPillarSourceCode. ].
 ]]]
 
 !!! We are set
@@ -111,11 +111,11 @@ The complete SmiLang has been introduced. This language may not be usable for a 
 
 ! Context Interpreter
 
-A context interpreter is an interpreter which represents the activation of each function by an object or a data structure called context. The call stack is composed of a linked list of contexts.
+A context interpreter is an interpreter which represents the activation of each function by a data structure called context. The call stack is composed of a linked list of contexts.
 
 !! What is a Context ?
 
-A Context is an object or a data structure (depending on the implementing language) which represents a function activation. In this section, contexts are instances of the class ==SmiContext==.
+A Context is a data structure which represents a function activation. In this section, contexts are instances of the class ==SmiContext==.
 
 A Context holds information such as:
 - The values of local variables
@@ -165,13 +165,13 @@ stream << (SmiExamples>>#example07TempAndCallAndCallArgs) sourceCode asPillarSou
 
 In Figure *@context2*, the Context represents the activation of the function ==add:to:== within the function ==example07TempAndCallAndCallArgs==.
 
-The sender field holds the activation of the function ==example07TempAndCallAndCallArgs==. As we can see, the function has a call to function ==add:to:==.
+The sender field holds the activation of the function ==example07TempAndCallAndCallArgs==. As we can see, the function has a call to the function ==add:to:==.
 
 +Context and collaborators for the ==add:to:== call in ==example07TempAndCallAndCallArgs==.>file://figures/context2.pdf|width=78|label=context2+
 
 The programCounter is 2, which means that 
-- the  first instructions ==1| pushTemp 2== has already been done or is currently being done.
-- The second instruction, ==2| pushTemp 1== is the next instruction to be executed. Note that in most interpreter implementations, the ==pushTemp== instruction works both for arguments and temporary variables depending on the value of the temp index encoded in the instruction. For store, it consumes the value on the stack. For fetch, it pushes the value on the stack. In this case the instruction is used to access the arguments values.
+- the  first instructions ==1| pushTemp 2== has already been executed or is currently being executed.
+- The second instruction, ==2| pushTemp 1== is the next instruction to be executed. Note that in most interpreter implementations, the ==pushTemp== instruction works both for arguments and temporary variables depending on the value of the temp index encoded in the instruction. For store, it reads the value to store on the stack but does not change the stack pointer. For push, it pushes the value of the temporary variable on the stack. In this case the instruction is used to access the arguments values.
 
 The function field holds a reference to the function ==add:to:==. This function has 2 arguments, 0 temporary variables and a stack that can go up to 4 slots. It has a list of 4 instructions.
 
@@ -196,7 +196,7 @@ The figure *@contextInterpretation1* shows the state of a context's stack at eac
 
 ""Example 2:"" Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
 
-+Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=75|label=contextInterpretation2+
++Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=72|label=contextInterpretation2+
 
 The first steps of the interpretation are drawn in figure *@contextInterpretation2*. Try to draw or imagine the next steps.
 
@@ -244,11 +244,15 @@ There are different issues to the Context Interpreter performance-wise:
 
 In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack".
 
-+Representation of a native stack.>file://figures/stack1.pdf|width=75|label=stack1+
+!!! Call stack representation
 
 The figure *@stack1* describes the representation of a native stack.
 
++Representation of a native stack.>file://figures/stack1.pdf|width=75|label=stack1+
+
 The native stack holds information relative to each context next to each other. Assuming that the stack grows down, the data up to a stack frame is related to the sender of the function activation and the data down is related the function called by the activation. 
+
+!!! Interpreter state
 
 The interpreter, instead of knowing the active context, knows directly the state of the active function activation: 
 - the active function
@@ -256,11 +260,15 @@ The interpreter, instead of knowing the active context, knows directly the state
 - the active frame pointer: it points to the beginning of the function activation in the native stack
 - the stack pointer, it points to the top of the native stack and the top of active stack frame (they are the same). Values will be pushed and popped there.
 
+!!! Stack frame representation
+
 In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
 - Temporaries: Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
 - Spilled Values: These values are pushed on top of the stack for the execution by different instructions. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
 - Arguments:When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the lecture).
 - ==Function==, ==pc== and ==frame pointer==: Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, it will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
+
+!!! Active stack frame
 
 The active stack frame, i.e. the bottom stack frame, is different. The active function, pc and framepointer are directly held by the interpreter (they are not on stack). In practice, this avoids memory reads and writes if the interpreter variables (currentFunction, pc, framePointer) are in registers instead of in memory.
 
@@ -306,9 +314,7 @@ The call instruction works as follow:
 
 !! Return instructions
 
-The return instruction needs to:
-- Pop the stack until the previous frame state. This means popping the stack up to the previous frame pointer, then popping and restoring the previous active function, frame pointer and pc, and lastly popping the arguments of the function call.
-- Push the returned result on stack
+The return instruction has to set the execution to the previous stack frame execution state. This implies popping the stack up to the previous frame pointer, then popping and restoring the previous active function, frame pointer and pc, and lastly popping the arguments of the function call. In addition, it needs to push the returned result on stack.
 
 !! Build a stack interpreter
 
@@ -339,8 +345,8 @@ A common solution is to split the stack into stack pages of limited size. When t
 !!! Implementation
 
 The implementation is as follow:
-- On function activation, in addition to what is done in the ==StackInterpreter==, the interpreter estimates the stack frame size based on the max stack size field of the function. If there is not enough room in the stack page for the next stack frame, the interpreter switches to a new stack page.
-- On return, in addition to the ==StackInterpreter== behavior, if at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page can be marked (for example, the saved pc can be saved as a negative value) so the interpreter knows it has to do a return across stack pages.
+# ""Function Activation"": In addition to what is done in the ==StackInterpreter==, the interpreter estimates the stack frame size based on the max stack size field of the function. If there is not enough room in the stack page for the next stack frame, the interpreter switches to a new stack page.
+# ""Return"": In addition to the ==StackInterpreter== behavior, if at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page can be marked (for example, the saved pc can be saved as a negative value) so the interpreter knows it has to do a return across stack pages.
 
 !!! Exercise
 
@@ -358,15 +364,15 @@ In this section the student will introduce closures the context interpreter.
 
 A closure is an object that references a function and an environment, as represented on figure *@closure*. In this implementation, the function will be anonymous and the environment is the context in which the closure was created. We call the environment refered by a closure the closure’s outer context.
 
-+Closure representation.>file://figures/closure.pdf|width=75|label=closure+
++Closure representation.>file://figures/closure.pdf|width=70|label=closure+
 
-In addition to regular function, closure’s function activation (contexts representing closure activations) can access the closure, as represented on figure *@closureContext*. 
+In addition to regular function, closure’s function activation (contexts representing closure activations) have a reference to the closure they activated, as represented on figure *@closureContext*. 
 
 +Context versus Closure Context.>file://figures/closureContext.pdf|width=70|label=closureContext+
 
 If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. We call the ""outer context chain"" the list of outer context from the closure’s direct outer context to the first context which is not a closure activation. Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
 
-+Outer Context chain.>file://figures/OuterContextChain.pdf|width=100|label=OuterContextChain+
++Outer Context chain.>file://figures/OuterContextChain.pdf|width=70|label=OuterContextChain+
 
 In this implementation, the interpreter uses the closure’s outer context for two different purposes:
 - Remote temporary access
@@ -374,13 +380,21 @@ In this implementation, the interpreter uses the closure’s outer context for t
 
 !!! Remote temporary access
 
-The first feature, present in most language having closures, is the access of remote temporary variables. The closure’s function can access temporary variables that are held not in the current context, but in the closure’s outer context. In addition, if the closure outer context is already a closure activation, the closure activation can access the temporary variables of the closure’s outer context’s closure’s outer context. In case of a closure nested many times, the function can access all the temporary variables of all the enclosing contexts.
+The first feature, present in most language having closures, is the access of remote temporary variables. The closure’s function can access temporary variables that are held not in the current context, but in any of the context in the the closure’s outer context chain. 
+
+Here is an example of a closure accessing a remote temporary variable:
+
+[[[eval=true
+stream << (SmiExamples>>#example04ClosureRemoteTemp) sourceCode asPillarSourceCode.
+]]]
 
 !!! Non local return
 
-The second feature, present at least in Ruby in the form of Procedure returns and in Smalltalk, is called non local return. When a closure’s activation performs a non local return, it returns from the closure’s home context instead of the closure’s context sender. To learn more about non local return, you can read the section ""14.4 Returning from inside a Block"" from the book ""Deep into Pharo"".
+The second feature, present at least in Ruby in the form of Procedure returns and in Smalltalk, is called non local return. When a closure’s activation performs a non local return, it returns from the closure’s home context instead of the closure’s context sender. To learn more about non local returns, you can read the section ""14.4 Returning from inside a Block"" from the book ""Deep into Pharo"".
 
 !! New instructions
+
+To use closures in the context interpreter, we extend SmiLang with 5 new instructions. In addition, temporary variable can now hold either a Smi or a closure. We will assume it is the developer responsability to use the temporary variable correctly, hence if the interpreter tries activates a Smi as a closure or to perform a primitive operation such as ==+== on a closure, the interpreter should raise an error.
 
 [[[eval=true
   SmiClosureCompiler usedInstructions do: [ :each |
@@ -417,30 +431,38 @@ The naive closure model described in the previous section is nice to understand 
 
 A closure has a reference to a function and its outer context. It can happen that a closure outer context is terminated, in which case the closure’s actvation cannot perform a non local return. However, it can still access the terminated outer context temporaries.
 
-In the stack interpreter we have no contexts. The closure still needs to reference its enclosing environment for non local returns and remote temporary access. A naive implementation would be to have the closure referencing its outer stack frame. The problem in this case is that when the outer stack frame execution is terminated, the memory location for the stack frame is overridden by new activations. It is therefore impossible to know if the reference to the outer stack frame still refers to the stack frame or to random data from the stack.
+In the stack interpreter we have no contexts. The closure still needs to reference its enclosing environment for non local returns and remote temporary access. A naive implementation would be to have the closure referencing its outer stack frame. The problem in this case is that when the outer stack frame execution is terminated, the memory location for the stack frame can be overridden by new activations and it is very difficult to know if it has been overridden or not. It is therefore impossible to know if the reference to the outer stack frame still refers to the stack frame or to other data from the stack.
 
 If the outer stack frame happens to be terminated, we have two issues. 
 
-# ""Remote temporary access"": Firstly, if the closure’s activation tries to access remote temporary variables, the dead outer stack frame does not hold any more the temporary values. Even worse, the values may have been overriden by new stack frames.
+# ""Remote temporary access"": Firstly, if the closure’s activation tries to access remote temporary variables, the dead outer stack frame may not hold any more the temporary values. In fact, the values may have been overriden by new stack frames.
 # ""Non local returns"": Secondly, if the closure’s activation tries to perform a non local return, it has to figure out if the closure home context is dead to raise a BlockCannotReturn exception or not. The problem is that the home’s stack frame may be dead but also overridden with another stack frame. It is impossible in the current state to know if the data at the memory location of the home stack frame corresponds to the home stack frame or something else.
 
 !! Solutions
 
-We identified two problems so we need to describe two solutions. In this section, you will build a restrictive interpreter that cannot handle non local returns. It will implements the solution for remote temporary access, but not the one for non local return. In the next section, you will enhance the interpreter to support non local returns.
+We identified two problems so we need to describe two solutions. In this section, you will build a restrictive interpreter that cannot handle non local returns. It will implements the solution for remote temporary access, but not the one for non local return. In the next section, you will enhance the interpreter to support non local returns. The Closure representation you will use for the two stack interpreters with closures have a field named ==outerStackFrameWrapper==. You will completely ignore this field in this version of the interpreter (but use it in the next section).
 
-This subsection explains how to deal with remote temporary variables.
+This subsection explains how to deal with remote temporary variables only.
 
-If a closure outlives its outer stack frame, the outer stack frame field may have been overridden by new values and we can’t access the temporary variables. To solve this problem, the compiler will identify temporary variables that are accessed from multiple stack frames. Such variables will not be stored on stack, but on an array allocated outside of the stack, also called temp vector. In this implementation, the temp vector will be a Pharo array. 
+!!! Remote temporary access implementation
 
-When a closure is created, if it needs to access remote temporaries, it keeps a reference to a temp vector in addition to its anonymous function and its outer environment. Specific instructions are added in the language to support access to temporaries in temp vectors and to create closure with temp vector. We discuss these instructions in the next section.
+If a closure outlives its outer stack frame, the outer stack frame field may have been overridden by new values and we can’t access its temporary variables any more. To solve this problem, the compiler will identify temporary variables that are accessed from multiple stack frames. Such variables values will not be stored on stack, but on an array allocated outside of the stack, also called temp vector, as shown on figure *@tempVector1*. In this implementation, the temp vector will be a Pharo array. 
 
-If a regular function (non closure function) holds an instruction which creates a closure and that the closure access the regulr function temporaries, then the regular function starts with a create temp  vector instruction. This instruction creates the temp vector and pushes it on top of stack. The function then stores the temp vector in a temporary variable slot. Further access in the method to the temporaries accessed from multiple stack frame are done through the temp vector. 
++Temp vector referenced by a closure and a stack frame.>file://figures/tempVector1.pdf|width=70|label=tempVector1+
 
-Upon closure activation, if the closure has a temp vector reference, the temp vector is pushed on stack after the arguments and before the temporary variables. The instruction accessing remote temporary variables will allow the execution to access the temp vector’s values.
+When a closure is created, if it needs to access remote temporaries, it keeps a reference to a temp vector in addition to its anonymous function and its outer environment. Specific instructions are added in the language to support access to temporaries in temp vectors, to create temp vectors and to create closures with temp vector. We discuss these instructions in the next subsection.
+
+If a regular function (non closure function) holds an instruction which creates a closure and that the closure access the regulr function temporaries, then the regular function starts with a create temp  vector instruction. This instruction creates the temp vector and pushes it on top of stack. The function then stores the temp vector in a temporary variable slot. Further access in the method to the temporaries accessed from multiple stack frame are done indirectly through the temp vector. 
+
+Upon closure activation, if the closure has a temp vector reference, the temp vector is pushed on stack after the arguments and before the temporary variables. The instruction accessing remote temporary variables will allow the execution to access the temp vector’s values. The instruction holds the index of the tempVector so it can be accessed as a temporary variable and the index of the temporary variable in the temp vector, as show on figure *@tempVectorTempAccess*.
+
++Access of the temporary 2 in vector at 3.>file://figures/tempVectorTempAccess.pdf|width=70|label=tempVectorTempAccess+
+
+!!! Example
 
 !! Extended instruction set
 
-In order to use closures in the stack interpreter, we extend SmiLang (the non closure interpreter version) with 6 new instructions:
+To use closures in the stack interpreter, we extend SmiLang (the non closure interpreter version) with 4 new instructions:
 
 [[[eval=true
   SmiStackClosureCompiler usedInstructions do: [ :each |
@@ -537,7 +559,6 @@ You can now look into the ==Context== class in Pharo and verify that you underst
 !! Correction
 
 In the repository *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*, one can find a package named SmiLang-Correction. It includes a *possible* implementation for each interpreter. 
-
 
 
 
