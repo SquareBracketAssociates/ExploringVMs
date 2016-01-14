@@ -339,7 +339,7 @@ The Stack interpreter previously built is nice but it has a critical flaw. It co
 !!! Solution
 
 A common solution is to split the stack into stack pages of limited size. When the bottom of a stack page is reached, the interpreter switch to a new stack page. The stack pages are created at interpreter start-up and there are of  limited number. Once all the pages are full, different strategies exist depending on the language you want to implement:
-- Raise a StackOverflow error
+- Raise a StackOverflow error.
 - Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
 
 !!! Implementation
