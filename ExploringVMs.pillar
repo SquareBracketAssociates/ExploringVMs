@@ -170,7 +170,7 @@ The sender field holds the activation of the function ==example07TempAndCallAndC
 +Context and collaborators for the ==add:to:== call in ==example07TempAndCallAndCallArgs==.>file://figures/context2.pdf|width=78|label=context2+
 
 The programCounter is 2, which means that 
-- the  first instructions ==1| pushTemp 2== has already been executed or is currently being executed.
+-  The first instructions ==1| pushTemp 2== has already been executed or is currently being executed.
 - The second instruction, ==2| pushTemp 1== is the next instruction to be executed. Note that in most interpreter implementations, the ==pushTemp== instruction works both for arguments and temporary variables depending on the value of the temp index encoded in the instruction. For store, it reads the value to store on the stack but does not change the stack pointer. For push, it pushes the value of the temporary variable on the stack. In this case the instruction is used to access the arguments values.
 
 The function field holds a reference to the function ==add:to:==. This function has 2 arguments, 0 temporary variables and a stack that can go up to 4 slots. It has a list of 4 instructions.
@@ -263,10 +263,10 @@ The interpreter, instead of knowing the active context, knows directly the state
 !!! Stack frame representation
 
 In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
-- Temporaries: Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
-- Spilled Values: These values are pushed on top of the stack for the execution by different instructions. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
-- Arguments:When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the lecture).
-- ==Function==, ==pc== and ==frame pointer==: Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, it will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
+- ""Temporaries"": Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
+- ""Spilled Values"": These values are pushed on top of the stack for the execution by different instructions. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
+- ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the lecture).
+- ""==Function==, ==pc== and ==frame pointer=="": Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, it will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
 
 !!! Active stack frame
 
@@ -360,7 +360,7 @@ A good ==StackInterpreter== needs to be implemented in a way that returns and ca
 
 !! Introduction
 
-In this section the student will introduce closures the context interpreter.
+In this section the student will introduce closures the context interpreter. This section deals with the closure implementation and does not explain what is a closure. If you don't know what is a closure, please read first documentation on the internet about it, such as the chapter ""14. Blocks: a Detailed Analysis"" of the free online book ""Deep into Pharo"".
 
 A closure is an object that references a function and an environment, as represented on figure *@closure*. In this implementation, the function will be anonymous and the environment is the context in which the closure was created. We call the environment refered by a closure the closure’s outer context.
 
@@ -374,27 +374,67 @@ If the closure is defined in another closure, then the closure’s outer context
 
 +Outer Context chain.>file://figures/OuterContextChain.pdf|width=70|label=OuterContextChain+
 
-In this implementation, the interpreter uses the closure’s outer context for two different purposes:
+!!! Extending the language
+
+To support closures, the syntax of SmiLang is extended with the operator ==[ ]== and the primitive operation ==value==.
+
+!!!! Closure creation 
+
+==[ ]== is used to create a new closure. ==[== mark the beginning and ==]== mark the end of the anonymous fonction held by the closure. 
+
+""Example""
+
+In the following example, the function answers a closure holding the anonymous function answering ==1==. Each execution of the function answers a different closure.
+
+[[[eval=true
+stream << (SmiAdditionnalExamples>>#example01Closure) sourceCode asPillarSourceCode.
+]]]
+
+!!!! Closure activation
+
+The keyword ==value== represents the primitive operation that activates the closure. In a similar way to the function call, ==value== creates a new context, but the context is a closure's activation and not a simple function activation. Once activated, the closure's anonymous function is executed and its result is returned.
+
+""Example""
+
+In the following example, the function activates the closure holding the anonymous function answering ==1==. The ==value== primitive operation activates the closure, hence the result of the function is ==1==.
+
+[[[eval=true
+stream << (SmiAdditionnalExamples>>#example02ClosureActivation) sourceCode asPillarSourceCode.
+]]]
+
+!!!! Value of temporary variables
+
+As ==[ ]== answers a closure, it is now possible for temporary variable to hold either a Smi or a closure. 
+
+We will consider that it is the developer responsability to call the primitive ==value== on a closure and not on a Smi.
+
+If ==value== is called on a Smi or if a primitive operation on Smis such as ==+== is called with a closure as operand, the interpreter raises an error and stops executing code. 
+
+In a real system, different solutions exists to avoid having runtime hard errors. For example, a type system could allow the compiler to raise a compilation error if such a type missmatch happens. Alternatively, in dynamically-typed languages like Smalltalk, the language runs specific fall-back routines when a primitive fails to handle such problems.
+
+!!! Extra features of closure activations
+
+On the contrary to regular context representing functions, context representing a closure activation can use the closure’s outer context for two different purposes:
 - Remote temporary access
 - Non local return
 
-!!! Remote temporary access
+!!!! Remote temporary access
 
 The first feature, present in most language having closures, is the access of remote temporary variables. The closure’s function can access temporary variables that are held not in the current context, but in any of the context in the the closure’s outer context chain. 
 
 Here is an example of a closure accessing a remote temporary variable:
 
 [[[eval=true
-stream << (SmiExamples>>#example04ClosureRemoteTemp) sourceCode asPillarSourceCode.
+stream << (SmiAdditionnalExamples>>#example04ClosureRemoteTemp) sourceCode asPillarSourceCode.
 ]]]
 
-!!! Non local return
+!!!! Non local return
 
-The second feature, present at least in Ruby in the form of Procedure returns and in Smalltalk, is called non local return. When a closure’s activation performs a non local return, it returns from the closure’s home context instead of the closure’s context sender. To learn more about non local returns, you can read the section ""14.4 Returning from inside a Block"" from the book ""Deep into Pharo"".
+The second feature, present at least in Ruby in the form of Procedure returns and in Smalltalk, is called non local return. When a closure’s activation performs a non local return, it returns from the closure’s home context instead of the closure’s context sender. To learn more about non local returns, you can read the section ""14.4 Returning from inside a Block"" from the free online book ""Deep into Pharo"".
 
-!! New instructions
+!! Extending the instruction set
 
-To use closures in the context interpreter, we extend SmiLang with 5 new instructions. In addition, temporary variable can now hold either a Smi or a closure. We will assume it is the developer responsability to use the temporary variable correctly, hence if the interpreter tries activates a Smi as a closure or to perform a primitive operation such as ==+== on a closure, the interpreter should raise an error.
+To use closures in the context interpreter, we extend SmiLang with 5 new instructions.
 
 [[[eval=true
   SmiClosureCompiler usedInstructions do: [ :each |
