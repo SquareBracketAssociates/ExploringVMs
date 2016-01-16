@@ -2,6 +2,8 @@
 
 intro
 
+we compile for closure *context* interpreter blabla.
+
 !! Overall compiler overview
 
 what a compiler does blabla
@@ -132,6 +134,8 @@ returns and nil blocks.
 !! Temp vectors
 
 compiling for StackInterpreter
+
+no implementation :( in exercise, though you can do it.
 
 !! Static versus runtime optimizations
 
