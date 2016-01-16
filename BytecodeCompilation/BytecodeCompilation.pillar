@@ -8,13 +8,19 @@ no cascade, runtime array, name primitive, class variable, shared pool
 
 !! Abstract Syntax Tree proposed
 
+Simple and clean
+
+
+
 !! CompiledCode format
+
+executable by the interpreter.
+
+Common for closure's function and compiled method. 
 
 Instruction encoding
 
 stack operations....
-
-
 
 
 ! Simple Method Compiler
