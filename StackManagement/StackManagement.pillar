@@ -7,19 +7,18 @@ load.
 Smalltalk snapshot: true andQuit: false.
 ]]]
 
-! Context and Stack Machines
-
 !!!! Introduction
-This lecture is part of a larger set of lecture whose goal is to teach how to build a simple virtual machine for object oriented programming languages. The current lecture deals with execution stack management and closure implementation. 
 
-To succeed, the student has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang.
+This part of the book deals with call stack management, especially when the executed programming language supports closures. 
 
-Although it is recommended to implement all the interpreters described in this lecture, the student has only to understand and implement the context interpreters described in Sections 3 and 6 and read the Sections 2 and 9 to continue with the virtual machine lecture. The Sections 4, 5, 7 and 8 deals with interpreters using a native stack and are not required to understand the next parts of the lecture.
+To master all the concepts exposed, the reader has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang.
+
+Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Sections 3 and 6 and read the Sections 2 and 9 to continue reading the book. The Sections 4, 5, 7 and 8 deals with interpreters using a native stack and are not required to understand the next parts of the book.
 
 %todo put real links to sections
 
 !!!! Concepts
-Students will learn the following concepts during this tutorial:
+Readers will learn the following concepts during this tutorial:
 
 - 	Context interpreter
 -	Stack Interpreter
@@ -47,7 +46,7 @@ Thanks to Cyril Ferlicot, Vincent Blondeau for the early reviews and runs of the
 
 ! SmiLang: A Simple Integer Language
 
-During this tutorial, the student will implement several interpreters of the language SmiLang. “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and primitive operations on Smis.
+During this tutorial, the reader will implement several interpreters of the language SmiLang. “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and primitive operations on Smis.
 
 !! SmiLang Basics
 SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called using with static calls. Every function has to return a value (no procedures). 
@@ -229,7 +228,7 @@ Good luck and have fun.
 
 ! Simple Stack Interpreter
 
-In this section the student will build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
+In this section, one has to build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
 
 The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". In subsequent implementation we will deal with limited memory stack using stack pages. 
 But let us start by discussing the limits of our first naïve context interpreter.
@@ -265,7 +264,7 @@ The interpreter, instead of knowing the active context, knows directly the state
 In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
 - ""Temporaries"": Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
 - ""Spilled Values"": These values are pushed on top of the stack for the execution by different instructions. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
-- ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the lecture).
+- ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the section).
 - ""==Function==, ==pc== and ==frame pointer=="": Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, it will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
 
 !!! Active stack frame
@@ -326,7 +325,7 @@ Go to the package tag ==SmiLang>>Stack interpreter==. A ==SmiStackInterpreter== 
 
 The interpretation starts with a fake stack frame which holds flags. The Interpreter then calls a function (the public API, ==#interpret:==, specified in the public method protocol, defines the function to call). The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
 
-The ==SmiStackInterpreterTests== have to pass to proceed the lecture. 
+The ==SmiStackInterpreterTests== have to pass to proceed to the next section. 
 
 Good luck and have fun !
 
@@ -360,7 +359,7 @@ A good ==StackInterpreter== needs to be implemented in a way that returns and ca
 
 !! Introduction
 
-In this section the student will introduce closures the context interpreter. This section deals with the closure implementation and does not explain what is a closure. If you don't know what is a closure, please read first documentation on the internet about it, such as the chapter ""14. Blocks: a Detailed Analysis"" of the free online book ""Deep into Pharo"".
+In this section, the reader will introduce closures the context interpreter. This section deals with the closure implementation and does not explain what is a closure. If you don't know what is a closure, please read first documentation on the internet about it, such as the chapter ""14. Blocks: a Detailed Analysis"" of the free online book ""Deep into Pharo"".
 
 A closure is an object that references a function and an environment, as represented on figure *@closure*. In this implementation, the function will be anonymous and the environment is the context in which the closure was created. We call the environment refered by a closure the closure’s outer context.
 
@@ -455,7 +454,7 @@ Open a Pharo 4 image, load the package SmiLang-ClosureExtension you can find on 
 
 Go to the package tag ==SmiLang-ClosureExtension>>context== interpreter. A ==SmiClosureContextInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The SmiClosureContextInterpreterTests have to pass to proceed the lecture. 
+The SmiClosureContextInterpreterTests have to pass to proceed to the next section. 
 
 Good luck and have fun !
 
@@ -463,7 +462,7 @@ Good luck and have fun !
 
 In the two next sections you will introduce the closures in the stack interpreter.
 
-The two next sections, especially the next one, are ""considerably"" more complex than the other sections. As explained in the introduction, these sections are optional for the overall virtual machine lecture.
+The two next sections, especially the next one, are ""considerably"" more complex than the other sections. As explained in the introduction, these sections are optional to understand the overall concepts present in this book.
 
 !! Problems
 
@@ -523,7 +522,7 @@ Open a Pharo 4 image, load the package ==SmiLang-StackClosureExtension== you can
 
 Go to the package tag ==SmiLang-StackClosureExtension>>stack interpreter==. A ==SmiSimplifiedClosureStackInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The ==SmiSimplifiedClosureStackInterpreterTests== have to pass to finish the lecture. This exercise is more difficult than the previous ones because of the temp vectors and the non local returns implementations.
+The ==SmiSimplifiedClosureStackInterpreterTests== have to pass to proceed to the next section.
 
 Good luck and have fun !
 
@@ -557,7 +556,7 @@ When a closure is created in the stack frame, the stack frame needs to be wrappe
 
 Instead of keeping a reference to their outer context as in the context interpreter, closures keep a reference to their outer stack frame’s stack frame wrapper.
 
-+Stack frame wrapper model.>file://figures/stackFrameWrapper.pdf|width=75|label=stackFrameWrapper+
++Stack Frame (not wrapped) versus Wrapped Stack Frame.>file://figures/stackFrameWrapper.pdf|width=75|label=stackFrameWrapper+
 
 !!! Accessing the wrapper from the stack frame
 
@@ -585,7 +584,7 @@ Open a Pharo 4 image, load the package ==SmiLang-StackClosureExtension== you can
 
 Go to the package tag ==SmiLang-StackClosureExtension>>stack interpreter==. A ==SmiRealClosureStackInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The ==SmiRealClosureStackInterpreterTests== have to pass to finish the lecture. This exercise is more difficult than the previous ones because of the temp vectors and the non local returns implementations.
+The ==SmiRealClosureStackInterpreterTests== have to pass to proceed to the next section. This exercise is more difficult than the previous ones the non local returns implementation.
 
 Good luck and have fun !
 

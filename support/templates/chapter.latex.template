@@ -10,12 +10,6 @@
 
 {{=« »=}}
 «! the '&' below prevents HTML escaping. »
-\title{«& title»}
-\author{Clément Béra (with Stéphane Ducasse)}
-
-\begin{titlingpage}
-    \maketitle
-\end{titlingpage}
 
 «& content»
 
