@@ -1,6 +1,10 @@
-! Overview of the Bytecode compiler
+! Overview of the Bytecode Compiler
+
+intro
 
 !! Overall compiler overview
+
+what a compiler does blabla
 
 !! Restrictive Smalltalk
 
@@ -8,11 +12,11 @@ no cascade, runtime array, name primitive, class variable, shared pool
 
 !! Abstract Syntax Tree proposed
 
-Simple and clean
-
-
+Simple and clean, explain cleaned
 
 !! CompiledCode format
+
++Memory representation of CompiledCode.>file://figures/CompiledCode.pdf|width=75|label=CompiledCode+
 
 executable by the interpreter.
 
@@ -22,10 +26,7 @@ Instruction encoding
 
 stack operations....
 
-
-! Simple Method Compiler
-
-@@ This first section is too large !! Maybe compiling your first method (return self, return 1), then compiling variables, and another big section to compile sends.
+! Compiling your First Methods
 
 !! Compiling Special Variables
 
@@ -33,33 +34,50 @@ thisContext, self super
 
 !! Compiling Returns
 
-!! Compiling Methods
+ret
 
-primitive
+!! Compiling Methods and Sequences
 
-!! Compiling Sequences
-
-first 3 method should be compiled
+simple things
 
 !! Compiling Literals
 
-!! Compiling Generic Variables
+lit
+
+- first 3 method should be compiled !!!
+
+! Compiling Variable Accesses
+
+!! Variable Scopes and Lookups
+
++Variable scopes.>file://figures/MethodScopes.pdf|width=35|label=MethodScopes+
+
++Variable Lookup.>file://figures/VariableLookup.pdf|width=95|label=VariableLookup+
 
 normal variables : building the scopes
 Global>>instance>>Temp
 
 !! Compiling Assignment
 
+assign
+
+! Full Method Compiler
+
+now compile everything but closures
+
 !! Compiling Message Sends
 
 regular and super sends
 
+!! Compiling primitives
 
+primitive numbered or 0
 
+! Closure compiler
 
-! Context Closure compiler
+!! Compiling Variable Accesses
 
-!! Compiling variables
++Variable scopes.>file://figures/BlockScopes.pdf|width=50|label=BlockScopes+
 
 new scopes for temps 
 
@@ -67,21 +85,27 @@ remote temps
 
 !! Compiling a closure
 
+cl
+
 ! Static optimizations control flow messages
 
-!! Inlining Branches
-
-the example of ifTrue:, ifTrue:ifFalse:, ifFalse:ifTrue:, ifFalse:
+cant optimize much blabla
 
 !! Inlining Finite Loops
 
 the example of #to:do: & #to:by:do:
 
-! Discussion
+!! Inlining Branches
 
-!! What makes a good compiler ?
+the example of ifTrue:, ifTrue:ifFalse:, ifFalse:ifTrue:, ifFalse:
+
+! What makes a good compiler ?
+
+blabla
 
 !!! Handling Compilation error and warnings
+
+example
 
 !!! Compilation time
 
@@ -97,6 +121,10 @@ not much we can do in the bytecode compiler though :(
 
 often both later are the same as memory access are the more time consuming operation and there are caches.
 
+! Discussion
+
+blabla
+
 !! Handling the hidden semantics
 
 returns and nil blocks.
@@ -108,3 +136,11 @@ compiling for StackInterpreter
 !! Static versus runtime optimizations
 
 Aggressive specialization vs memory footprint
+
+!! Type prediction
+
+example of arthmetic, memory + performance difference
+
+!! Hard Inlining of specific messages
+
+The example of pointer identity
