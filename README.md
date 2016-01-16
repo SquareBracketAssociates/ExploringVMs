@@ -6,20 +6,20 @@ Currently the implementation part (templates and examples) are done in Pharo Sma
 
 ##Installation
 
-- Clone the repository
-- Install packages related to latex compilation  (texlive or whatever)
-- Execute successfully:
-- download.sh (download on your machine the programs required for compilation)
-- compile.sh (compile each chapter)
-- compileBook.sh (merge the chapters into a book)
+* Clone the repository
+* Install packages related to latex compilation  (texlive or whatever)
+* Execute successfully:
+  - download.sh (download on your machine the programs required for compilation)
+  - compile.sh (compile each chapter)
+  - compileBook.sh (merge the chapters into a book)
 
 If it does not work I can send you a precompiled version if you contact me (contact at bottom of document). There is *currently* no alternatives.
 
 ##Status
 
-- released: These sections are opened to everyone and the book writers are happy to discuss them.
-- beta: While not necessarily completely finished, these sections are opened to external beta testers. Please give feedback if you are experimenting with a beta section. The book writers will improve these sections based on beta tester feedbacks and are happy to discuss them.
-- alpha: Reserved for the book writer(s). External people can read and use these sections, but they are incomplete and the book writers may ignore any questions or requests related to those sections.
+- *released*: These sections are opened to everyone and the book writers are happy to discuss them.
+- *beta*: While not necessarily completely finished, these sections are opened to external beta testers. Please give feedback if you are experimenting with a beta section. The book writers will improve these sections based on beta tester feedbacks and are happy to discuss them.
+- *alpha*: Reserved for the book writer(s). External people can read and use these sections, but they are incomplete and the book writers may ignore any questions or requests related to those sections.
 
 The overall book is in alpha.
 
