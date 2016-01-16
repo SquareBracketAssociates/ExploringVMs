@@ -28,7 +28,7 @@ Instruction encoding
 
 stack operations....
 
-! Compiling your First Methods
+! Compilation of simple Methods
 
 !! Compiling Special Variables
 
@@ -48,7 +48,7 @@ lit
 
 - first 3 method should be compiled !!!
 
-! Compiling Variable Accesses
+! Compilation of Variable Accesses
 
 !! Variable Scopes and Lookups
 
@@ -59,7 +59,7 @@ lit
 normal variables : building the scopes
 Global>>instance>>Temp
 
-!! Compiling Assignment
+!! Compiling Assignments
 
 assign
 
@@ -71,11 +71,11 @@ now compile everything but closures
 
 regular and super sends
 
-!! Compiling primitives
+!! Compiling Primitives
 
 primitive numbered or 0
 
-! Closure compiler
+! Closure Compiler
 
 !! Compiling Variable Accesses
 
@@ -89,7 +89,7 @@ remote temps
 
 cl
 
-! Static optimizations control flow messages
+! Static Optimizations of Control Flow Operations
 
 cant optimize much blabla
 
@@ -105,21 +105,21 @@ the example of ifTrue:, ifTrue:ifFalse:, ifFalse:ifTrue:, ifFalse:
 
 blabla
 
-!!! Handling Compilation error and warnings
+!! Handling Compilation error and warnings
 
 example
 
-!!! Compilation time
+!! Compilation time
 
 why these 2 are first ?
 
 LLVM -=> fast to compile and good error handling, 10% slower in generated code and Apple moved.
 
-!!! Generated code execution time
+!! Generated code execution time
 
 not much we can do in the bytecode compiler though :(
 
-!!! Generated code execution memory footprint
+!! Generated code execution memory footprint
 
 often both later are the same as memory access are the more time consuming operation and there are caches.
 
