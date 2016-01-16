@@ -1,1 +1,104 @@
-! Bytecode comp
+! Overview of the Bytecode compiler
+
+!! Overall compiler overview
+
+!! Restrictive Smalltalk
+
+no cascade, runtime array, name primitive, class variable, shared pool
+
+!! Abstract Syntax Tree proposed
+
+!! CompiledCode format
+
+Instruction encoding
+
+stack operations....
+
+
+
+
+! Simple Method Compiler
+
+@@ This first section is too large !! Maybe compiling your first method (return self, return 1), then compiling variables, and another big section to compile sends.
+
+!! Compiling Special Variables
+
+thisContext, self super
+
+!! Compiling Returns
+
+!! Compiling Methods
+
+primitive
+
+!! Compiling Sequences
+
+first 3 method should be compiled
+
+!! Compiling Literals
+
+!! Compiling Generic Variables
+
+normal variables : building the scopes
+Global>>instance>>Temp
+
+!! Compiling Assignment
+
+!! Compiling Message Sends
+
+regular and super sends
+
+
+
+
+! Context Closure compiler
+
+!! Compiling variables
+
+new scopes for temps 
+
+remote temps
+
+!! Compiling a closure
+
+! Static optimizations control flow messages
+
+!! Inlining Branches
+
+the example of ifTrue:, ifTrue:ifFalse:, ifFalse:ifTrue:, ifFalse:
+
+!! Inlining Finite Loops
+
+the example of #to:do: & #to:by:do:
+
+! Discussion
+
+!! What makes a good compiler ?
+
+!!! Handling Compilation error and warnings
+
+!!! Compilation time
+
+why these 2 are first ?
+
+LLVM -=> fast to compile and good error handling, 10% slower in generated code and Apple moved.
+
+!!! Generated code execution time
+
+not much we can do in the bytecode compiler though :(
+
+!!! Generated code execution memory footprint
+
+often both later are the same as memory access are the more time consuming operation and there are caches.
+
+!! Handling the hidden semantics
+
+returns and nil blocks.
+
+!! Temp vectors
+
+compiling for StackInterpreter
+
+!! Static versus runtime optimizations
+
+Aggressive specialization vs memory footprint
