@@ -2,7 +2,13 @@
 
 intro
 
-we compile for closure *context* interpreter blabla.
+This part fo the book deals with Bytecode Compilation. The Bytecode Compiler is a tool that converts the source code of a method to a CompiledCode representation executable by the virtual machine.
+
+In this part, the reader has to implement 3 successives bytecode compilers for a restrictive Smalltalk (As shown in the following subsection, it is almost a complete Smalltalk System). To proceed to the next sections, the reader has to implement at least the 2 first compilers. Although the last compiler adds interesting concepts, its implementation is optional.
+
+- The first compiler can only compile methods and is built over 3 sections (sections 2,3 and 4).
+- The second one has support for closures, as they were implemented for the *context* interpreter in the previous part of the book.
+- The last and optional compiler introduces inlined compilation of control flow operations.
 
 !! Overall compiler overview
 
@@ -30,6 +36,8 @@ stack operations....
 
 ! Compilation of simple Methods
 
+Compilation of examples 1 to 4.
+
 !! Compiling Special Variables
 
 thisContext, self super
@@ -46,9 +54,10 @@ simple things
 
 lit
 
-- first 3 method should be compiled !!!
 
 ! Compilation of Variable Accesses
+
+Compilation of method 5 to 10.
 
 !! Variable Scopes and Lookups
 
@@ -67,6 +76,8 @@ assign
 
 now compile everything but closures
 
+up to example 13
+
 !! Compiling Message Sends
 
 regular and super sends
@@ -76,6 +87,8 @@ regular and super sends
 primitive numbered or 0
 
 ! Closure Compiler
+
+up to example 18
 
 !! Compiling Variable Accesses
 
@@ -90,6 +103,8 @@ remote temps
 cl
 
 ! Static Optimizations of Control Flow Operations
+
+all examples => up to 24
 
 cant optimize much blabla
 
@@ -141,10 +156,57 @@ no implementation :( in exercise, though you can do it.
 
 Aggressive specialization vs memory footprint
 
-!! Type prediction
+!! Optimization: Type prediction
 
-example of arthmetic, memory + performance difference
+To improve the performance of the execution speed of the compiled code by the virtual machine without adding too many constraints on the system, one can implement a technique invented by Dan Ingalls for early versions of Smalltalk called ""Type prediction"".
+
+The idea is to identify frequently used selectors that are almost always executed on objects of the same type, compile them differently and optimize their execution in the virtual machine.
+
+In Pharo, this is done for most of the arithmetic operations:
+
+[[[eval=true
+BytecodeEncoder specialSelectors first: 16 
+]]]
+
+Let's take the example of ==1 + 2==.
+
+Normally, the compiler should compile it as any message send:
+[[[
+<16 01> pushLiteral: 1
+<16 02> pushLiteral: 2
+<24 03 01> send: #+
+]]]
+
+If this technique is applied, the compiler will have a list of known selectors that should be compiled differently. Message sends with such selectors will be compiled to specific bytecode instruction instead of the generic message send instructions. Then, the virtual machine execute such specific instruction with specialized code for the selector which is faster.
+
+On the compiler implemented in this part of the book, many bytecodes are free. Bytes between 39 and 255 does not encode anything. To apply the technique of Type prediction for ==+==, the compiler and virtual machine implementors change their code as follow:
+
+- Bytecode set
+
+The bytecode set is extended to support message sends of specific selectors. On the compiler described in this part of the book, one can use ==100== (==64== in hexadecimal) to encode the message send ==+==.
+
+- Compiler
+
+The compiler has to compile all the message sends with the selector ==+== to the new bytecode instead of the generic bytecode for message send.
+
+- Virtual machine
+
+Assuming we are in an interpreter-based virtual machine, the interpreter will decode the sends of ==+== differently as it is not the same bytecode. As ==+== is used mainly for addition between Smis, the execution of ==+== will first check if the 2 operands are Smis. If it is the case, then it tries to perform the primitive operation. If no overflow happened, then the interpreter directly pops the 2 values from the stack and pushes the result back. As most sends of ==+== are used on addition of 2 Smis with no overflow, most sends of ==+== are drastically faster. If an overflow happened or one of the operands was not a Smi, then the interpreter falls back on the execution of the regular message send. Even in this case, as the selector is a constant (==+==) and not a value to fetch in the literal frame of the method, the send is still faster.
+
+- Side effects
+
+The bytecode instruction for ==+== can be encoded in 1 byte as there is no need to encode the index of the selector in the literal frame nor the number of arguments as it is fixed (1). The literal ==+== does not need to be put in the literal frame of the compiled code, but instead needs to be directly known by the virtual machine. For a frequently used selector such as ==+==, this can decrease a lot the memory footprint of the compiled code.
+
+The method ==+== in SmallInteger has to have the same behavior as the inlined operation for ==+== in the interpreter and can't be changed without changing the interpreter.
 
 !! Hard Inlining of specific messages
 
-The example of pointer identity
+In some cases, the compiler and virtual machine implementors can decide to inline specific selectors all the time. This is the case in Pharo for example for ==\=\===.
+
+This has implications:
+
+interrupt points
+
+no override / message send / lookup
+
+
