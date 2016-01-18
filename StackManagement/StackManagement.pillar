@@ -7,7 +7,7 @@ load.
 Smalltalk snapshot: true andQuit: false.
 ]]]
 
-!!!! Introduction
+! Introduction
 
 This part of the book deals with call stack management, especially when the executed programming language supports closures. 
 
