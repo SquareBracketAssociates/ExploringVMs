@@ -9,3 +9,4 @@
 /package-cache
 .DS_Store
 PharoDebug.log
+.auctex/
