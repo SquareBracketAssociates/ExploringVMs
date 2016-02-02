@@ -64,24 +64,11 @@
 \lstalias{STON}{plain}
 \lstalias{Javascript}{plain}
 
-\lstset{language=smalltalk}
+\lstset{
+  language = smalltalk,
+  tabsize = 3
+}
 \newcommand\code[1]{\texttt{\textup{#1}}}
-\lstnewenvironment{listing}[1][]{%
-  \lstset{%
-    inputencoding=utf8,
-    columns=fullflexible,
-    frame=none,
-    mathescape=false,
-    tabsize=2,
-    keywordstyle={},
-    stringstyle={},
-    commentstyle={},
-    showstringspaces=false,
-    breaklines=true,
-    breakatwhitespace=true,
-    #1
-  }%
-}{}
 
 % highlighted paragraphs
 \newenvironment{note}{%
