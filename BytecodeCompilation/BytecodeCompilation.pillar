@@ -1,7 +1,5 @@
 ! Overview of the Bytecode Compiler
 
-intro
-
 This part fo the book deals with Bytecode Compilation. The Bytecode Compiler is a tool that converts the source code of a method to a CompiledCode representation executable by the virtual machine.
 
 In this part, the reader has to implement 3 successives bytecode compilers for a restrictive Smalltalk (As shown in the following subsection, it is almost a complete Smalltalk System). To proceed to the next sections, the reader has to implement at least the 2 first compilers. Although the last compiler adds interesting concepts, its implementation is optional.
@@ -168,7 +166,7 @@ In Pharo, this is done for most of the arithmetic operations:
 BytecodeEncoder specialSelectors first: 16 
 ]]]
 
-Let's take the example of ==1 + 2==.
+Let's take the example of ==1 \+ 2==.
 
 Normally, the compiler should compile it as any message send:
 [[[
@@ -179,15 +177,15 @@ Normally, the compiler should compile it as any message send:
 
 If this technique is applied, the compiler will have a list of known selectors that should be compiled differently. Message sends with such selectors will be compiled to specific bytecode instruction instead of the generic message send instructions. Then, the virtual machine execute such specific instruction with specialized code for the selector which is faster.
 
-On the compiler implemented in this part of the book, many bytecodes are free. Bytes between 39 and 255 does not encode anything. To apply the technique of Type prediction for ==+==, the compiler and virtual machine implementors change their code as follow:
+On the compiler implemented in this part of the book, many bytecodes are free. Bytes between 39 and 255 does not encode anything. To apply the technique of Type prediction for ==\+==, the compiler and virtual machine implementors change their code as follow:
 
 - Bytecode set
 
-The bytecode set is extended to support message sends of specific selectors. On the compiler described in this part of the book, one can use ==100== (==64== in hexadecimal) to encode the message send ==+==.
+The bytecode set is extended to support message sends of specific selectors. On the compiler described in this part of the book, one can use ==100== (==64== in hexadecimal) to encode the message send ==\+==.
 
 - Compiler
 
-The compiler has to compile all the message sends with the selector ==+== to the new bytecode instead of the generic bytecode for message send.
+The compiler has to compile all the message sends with the selector ==\+== to the new bytecode instead of the generic bytecode for message send.
 
 - Virtual machine
 
