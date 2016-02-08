@@ -191,17 +191,17 @@ The compiler has to compile all the message sends with the selector ==+== to the
 
 - Virtual machine
 
-Assuming we are in an interpreter-based virtual machine, the interpreter will decode the sends of ==+== differently as it is not the same bytecode. As ==+== is used mainly for addition between Smis, the execution of ==+== will first check if the 2 operands are Smis. If it is the case, then it tries to perform the primitive operation. If no overflow happened, then the interpreter directly pops the 2 values from the stack and pushes the result back. As most sends of ==+== are used on addition of 2 Smis with no overflow, most sends of ==+== are drastically faster. If an overflow happened or one of the operands was not a Smi, then the interpreter falls back on the execution of the regular message send. Even in this case, as the selector is a constant (==+==) and not a value to fetch in the literal frame of the method, the send is still faster.
+Assuming we are in an interpreter-based virtual machine, the interpreter will decode the sends of ==\+== differently as it is not the same bytecode. As ==\+== is used mainly for addition between Smis, the execution of ==\+== will first check if the 2 operands are Smis. If it is the case, then it tries to perform the primitive operation. If no overflow happened, then the interpreter directly pops the 2 values from the stack and pushes the result back. As most sends of ==\+== are used on addition of 2 Smis with no overflow, most sends of ==\+== are drastically faster. If an overflow happened or one of the operands was not a Smi, then the interpreter falls back on the execution of the regular message send. Even in this case, as the selector is a constant (==\+==) and not a value to fetch in the literal frame of the method, the send is still faster.
 
 - Side effects
 
-The bytecode instruction for ==+== can be encoded in 1 byte as there is no need to encode the index of the selector in the literal frame nor the number of arguments as it is fixed (1). The literal ==+== does not need to be put in the literal frame of the compiled code, but instead needs to be directly known by the virtual machine. For a frequently used selector such as ==+==, this can decrease a lot the memory footprint of the compiled code.
+The bytecode instruction for ==\+== can be encoded in 1 byte as there is no need to encode the index of the selector in the literal frame nor the number of arguments as it is fixed (1). The literal ==\+== does not need to be put in the literal frame of the compiled code, but instead needs to be directly known by the virtual machine. For a frequently used selector such as ==\+==, this can decrease a lot the memory footprint of the compiled code.
 
-The method ==+== in SmallInteger has to have the same behavior as the inlined operation for ==+== in the interpreter and can't be changed without changing the interpreter.
+The method ==\+== in SmallInteger has to have the same behavior as the inlined operation for ==\+== in the interpreter and can't be changed without changing the interpreter.
 
 !! Hard Inlining of specific messages
 
-In some cases, the compiler and virtual machine implementors can decide to inline specific selectors all the time. This is the case in Pharo for example for ==\=\===.
+In some cases, the compiler and virtual machine implementors can decide to inline specific selectors all the time. This is the case in Pharo for example for (identityEqual) == \=\= ==.
 
 This has implications:
 

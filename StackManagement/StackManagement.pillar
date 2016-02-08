@@ -351,9 +351,22 @@ The implementation is as follow:
 
 As an exercise, have the ==SmiStackInterpreterWithStackPagesTests== pass by implementing the ==SmiStackInterpreterWithStackPages==.
 
-!!! Comment
+!!! Making Calls and Returns across Stack Pages Uncommon
 
-A good ==StackInterpreter== needs to be implemented in a way that returns and calls across stack pages are uncommon because they are slower than regular calls and returns. For example, if the interpreter notices that many calls are done across stack pages, it would copy the bottom stack frame of the previous page to the beginning of a new page.
+A good ==StackInterpreter== needs to be implemented in a way that returns and calls across stack pages are uncommon because they are slower than regular calls and returns. Typically, in the case of recursive fibonnacci, it could be that most of the sends are done across stack pages and the system become dog slow.
+
+To avoid this problem, a good stack interpreter keeps a reference to the last stack page that overflowed and the number of time it overflowed. Each time a stack page overflows, if it is the last one that overflowed, the number of overflows is incremented by 1, else the reference to the last stack page that overflowed is updated and the number of overflow reset. In pseudo-code, that would mean:
+
+[[[
+stackPageOverflow: stackPage
+    lastStackPageThatOverflowed = stackPage
+        ifTrue: [ numOverflow := numOverflow + 1 ]
+        ifFalse: [ 
+            lastStackPageThatOverflowed := stackPage.
+            numOverflow := 1 ]
+]]]
+
+When a new stack page is required, if the current stack page has already overflowed, the interpreter decides to copy a certain number of stack frame to new page to make call and return across stack pages less common. The number of stack frame to copy depends on the number of time the stack page has overflowed and is bounded by a maximum value. This cheap strategy makes calls and returns across stack pages uncommon.
 
 ! Naive closures in the Context Interpreter
 
