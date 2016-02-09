@@ -43,13 +43,13 @@ This tutorial is divided in several sections:
 !!!! Thanks
 Thanks to Cyril Ferlicot, Vincent Blondeau for the early reviews and runs of the tutorial.
 
-! Theory: The implementation of a Stack
+! Theory: Stack Implementation
 
-This section describes how a stack is implemented efficiently. The discussion here is theoretical and abstract, it does not deal directly with call stack management. For this purpose, different implementations of stacks in Pharo are described and discussed.
+This section describes how to implement a stack efficiently. This discussion is theoretical, it does not deal directly with call stack management but concepts explained here will be referenced in the next sections. Different implementations of stacks in Pharo are described and discussed.
 
 Unfortunately, even if there are many good ways to implement a stack, the ==Stack== class available in Pharo has unconventional inherited APIs and is inefficient, so it can't be used as a reference and is missleading for unaware developers. It's not worth looking at while reading this section.
 
-The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are *not* part of a conventional stack APIs.
+The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are ""not"" part of a conventional stack APIs.
 
 !! Naive Implementation
 
@@ -93,9 +93,9 @@ Stack>>push: value
 
 !! Advanced implementations
 
-There are different problems with the naive implementation. Firstly, ==push:== and ==pop== require stack overflow and underflow checks. Secondly, upon stack overflow, an error is raised. It could be convenient, as for ==OrderedCollection==, that the stack dynamically grow.
+There are different problems with the naive implementation. Firstly, the common operations ==push:== and ==pop== require stack overflow and underflow checks, decreasing their performance. Secondly, upon stack overflow, an error is raised. It could be convenient, as for ==OrderedCollection==, that the stack dynamically grow instead of raising an error.
 
-This subsection discusses firstly the case where stack overflow and underflow can't happen, then discusses how to grow dynamically the stack
+This subsection discusses firstly the case where stack overflow and underflow can't happen and secondly how to grow dynamically the stack
 
 !!! Fixed-sized stack
 
@@ -133,15 +133,17 @@ Stack>>growStack
 	array := newArray.
 ]]]
 
-This approach is reasonable but not good enough in our case. There are many problems. For example, the stack grows but never shrinks, leading to huge memory footprint. Adding a shrink method implies additionnal checks on the pop instruction, leading to decreased performance.
+This approach is reasonable but not good enough in our case. There are many problems. For example, the stack grows but never shrinks, leading to huge memory footprint in some cases. Adding support for stack shrinking is difficult to do without decreasing the performance of pop. Another problem is that it is difficult to share the arrays between stacks as they have different sizes.
 
 %figrues
 
 !!! Stack pages stack
 
-This is the approach used usually by call stacks. When the fixed-sized array overflows, the stack keep growing on another stack page. Stack pages have a fixed sized, so they can be easily reused between multiple stacks. The stack is represented in memory as a linked list of stack pages. 
+This is the approach usually used by call stacks. The stack starts to grow in a fixed-sized array called stack page. When the stack page overflows, the stack keep growing on another stack page. Stack pages all have the same size, so they can be easily reused between multiple stacks. The stack is represented in memory as a linked list of stack pages. At worst, the stack wastes the size of a stack page of memory.
 
-A full linked list approach, where each value on stack needs a reference to the previous value, leads to many memory reads spread in memory which decreases performance and important memory footprint. However, this stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack.
+A full linked list approach, where each value on stack needs a reference to the previous value, leads to many memory reads spread in memory which decreases performance and important memory footprint. 
+
+This stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack. One can see this representation as an hybrid version between an array and a linked list.
 
 Here is possible code:
 
