@@ -43,14 +43,152 @@ This tutorial is divided in several sections:
 !!!! Thanks
 Thanks to Cyril Ferlicot, Vincent Blondeau for the early reviews and runs of the tutorial.
 
+! Theory: The implementation of a Stack
+
+This section describes how a stack is implemented efficiently. The discussion here is theoretical and abstract, it does not deal directly with call stack management. For this purpose, different implementations of stacks in Pharo are described and discussed.
+
+Unfortunately, even if there are many good ways to implement a stack, the ==Stack== class available in Pharo has unconventional inherited APIs and is inefficient, so it can't be used as a reference and is missleading for unaware developers. It's not worth looking at while reading this section.
+
+The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are *not* part of a conventional stack APIs.
+
+!! Naive Implementation
+
+A stack is a restrictive ==OrderedCollection==. The efficient implementation of a stack is therefore quite similar to the implementation of ==OrderedCollection== in Pharo. 
+
+The naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while the stackPointer hold the index of the top of the stack.
+
+%schema example
+
+Here is an example of how a stack could be implemented in Smalltalk:
+
+[[[
+Object subclass: #Stack
+	instanceVariableNames: 'array stackPointer'
+	classVariableNames: ''
+	category: 'Collection-Stack'
+	
+Stack class>>new: size
+	^ self basicNew initializeWithSize: size
+	
+Stack class>>new
+	^ self new: 10
+
+Stack>>initializeWithSize: size
+	array := Array new: size.
+	stackPointer := 0.
+
+Stack>>pop
+	| top |
+	stackPointer <= 0 ifTrue: [ self error: 'stack underflow' ].
+	top := array at: stackPointer.
+	stackPointer := stackPointer - 1.
+	^ top
+
+Stack>>push: value
+	stackPointer >= array size ifTrue: [ self error: 'stack overflow' ].
+	^ array at: (stackPointer := stackPointer + 1) put: value
+]]]
+
+% schema example.
+
+!! Advanced implementations
+
+There are different problems with the naive implementation. Firstly, ==push:== and ==pop== require stack overflow and underflow checks. Secondly, upon stack overflow, an error is raised. It could be convenient, as for ==OrderedCollection==, that the stack dynamically grow.
+
+This subsection discusses firstly the case where stack overflow and underflow can't happen, then discusses how to grow dynamically the stack
+
+!!! Fixed-sized stack
+
+In this case, the operations performed on the stack are known in advance and the program know for sure the maximum size of the stack and that there will be no stack underflows nor stack overflows. 
+
+The stack code can be simplified to remove the stack underflow and overflow checks.
+
+[[[
+Stack>>pop
+	| top |
+	top := array at: stackPointer.
+	stackPointer := stackPointer - 1.
+	^ top
+
+Stack>>push: value
+	^ array at: (stackPointer := stackPointer + 1) put: value
+]]]
+
+In the next section, this implementation of the stack will be referred as the fixed-sized stack.
+
+!!! Copying stack
+
+This is the approach used by ==OrderedCollection== in Pharo. Growing the stack implies the creation of a larger array with the previous array elements. Here is possible code:
+
+[[[
+Stack>>push: value
+	stackPointer >= array size ifTrue: [ self growStack ].
+	^ array at: (stackPointer := stackPointer + 1) put: value
+	
+Stack>>growStack
+	| newArray |
+	newArray := Array new: array size * 2.
+	array withIndexDo: [ :value :index |
+		newArray at: index put: value ].
+	array := newArray.
+]]]
+
+This approach is reasonable but not good enough in our case. There are many problems. For example, the stack grows but never shrinks, leading to huge memory footprint. Adding a shrink method implies additionnal checks on the pop instruction, leading to decreased performance.
+
+%figrues
+
+!!! Stack pages stack
+
+This is the approach used usually by call stacks. When the fixed-sized array overflows, the stack keep growing on another stack page. Stack pages have a fixed sized, so they can be easily reused between multiple stacks. The stack is represented in memory as a linked list of stack pages. 
+
+A full linked list approach, where each value on stack needs a reference to the previous value, leads to many memory reads spread in memory which decreases performance and important memory footprint. However, this stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack.
+
+Here is possible code:
+
+[[[
+Stack>>initializeWithSize: size
+	array := Array new: size.
+	stackPointer := 1.
+
+Stack>>pop
+	| top |
+	stackPointer <= 1 ifTrue: [ 
+	"The first value of each stack page is nil for the first 
+	stack page else a reference to the previous stack page."
+		(array at: stackPointer)
+			ifNil: [ self error: 'stack underflow']
+			ifNotNil: [ :previousPage | self previousStackPage: previousPage ] ].
+	top := array at: stackPointer.
+	stackPointer := stackPointer - 1.
+	^ top
+
+Stack>>push: value
+	stackPointer >= array size ifTrue: [ self nextStackPage ].
+	^ array at: (stackPointer := stackPointer + 1) put: value
+	
+Stack>>nextStackPage
+	| newArray |
+	newArray := Array new: array size.
+	"We keep a reference to the previous page
+	to be able to pop to it later"
+	newArray at: 1 put: array.
+	array := newArray.
+	stackPointer := 1.
+	
+Stack>>previousStackPage: previousPage
+	array := previousPage.
+	stackPointer := previousPage size.
+]]]
+
+%figures
+
 
 ! SmiLang: A Simple Integer Language
 
 During this tutorial, the reader will implement several interpreters of the language SmiLang. “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and primitive operations on Smis.
 
 !! SmiLang Basics
-SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called using with static calls. Every function has to return a value (no procedures). 
-
+SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
 
 The Smi language has 7 instructions:
 
@@ -129,7 +267,7 @@ Figure *@context1* shows a given computation state showing the relationships bet
 Let us explain this Figure class by class.
 
 !!!! Context.
-- The sender field of the Context references another context, the one which activated it. Such context chain is created during function call: the sender context is a function activation with a call to the context function.
+- The sender field of the Context references another context, the one which activated it. Such context chain is created during function call: the sender context has temporarily stopped its execution just after the function call that activated the described context.
 - The program counter field holds 3, which means the next instruction the Interpreter will execute is the third instruction of the function.
 - The function field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed. 
 - The stack pointer field holds 6, which means that in the space allocated for this specific context stack, which is in our case 7, only 6 values are currently used and the value at position 6 is the top of the stack.
@@ -137,17 +275,17 @@ Let us explain this Figure class by class.
 
 !!!! Function.
 - ==Function name== is useful for debugging purpose.
-- ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler.= The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value.
+- ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the section).
 - ==maxStackSize== . For performance reason, the Context, on creation, allocate for its stack enough space for the maximum size its stack can have. The maximum size that the stack can have is specified in the function by the compiler (see field name max stack size which holds 7 in  Figure *@context1*). 
 
 !!!! Stack.
 
-The stack is associated to a context for a function activation. This stack has not a regular stack API such as ==push:== or ==pop==. It has API such as ==at:== or ==at:put:== that the context uses based on the current stackPointer to do stack operations. For example, ==(stack at: stackPointer)== is the equivalent of ==stack top==.
+A stack is associated to each context, i.e., each function activation. A context's stack is composed in order as follow:
+# The values of the function arguments.
+# The values of the temporary variables.
+# The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The stack is composed in order as follow:
-- The values of the function arguments.
-- The values of the temporary variables.
-- The spilled values, which are the values pushed on stack by previously executed instructions.
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the *fixed-size stack* design described in the second section. Instead of creating a separate data structure, to limit the number of memory reads, the context directly holds the stackPointer and the array required by the stack representation (this array is named ==stack== in the implementation you will work on).
 
 !! Concrete Example: Activation of function add:to:
 
