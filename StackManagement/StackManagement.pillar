@@ -20,17 +20,17 @@ Although it is recommended to implement all the interpreters described in this p
 !!!! Concepts
 Readers will learn the following concepts during this tutorial:
 
-- 	Context interpreter
--	Stack Interpreter
--	Stack page management
--	Closure creation and activation
---	Remote temporary variable access
---	Non- local returns
+- Context interpreter
+- Stack Interpreter
+- Stack page management
+- Closure creation and activation
+-- Remote temporary variable access
+-- Non-local returns
 
 
 !!!! Outline
 
-This tutorial is divided in several sections:
+This tutorial is divided in several chapters:
 #	Description of the SmiLang language
 #	Implementation of a simple context interpreter
 #	Implementation of a simple stack interpreter
@@ -39,13 +39,16 @@ This tutorial is divided in several sections:
 #	Introduction of real closures in to the stack interpreter
 #	Discussion: what are the difference between the Smalltalk model and the SmiLang model
 
-
 !!!! Thanks
-Thanks to Cyril Ferlicot, Vincent Blondeau for the early reviews and runs of the tutorial.
+Thanks to Cyril Ferlicot and Vincent Blondeau for the early reviews and runs of the tutorial.
+
 
 ! Theory: Stack Implementation
 
-This section describes how to implement a stack efficiently. This discussion is theoretical, it does not deal directly with call stack management but concepts explained here will be referenced in the next sections. Different implementations of stacks in Pharo are described and discussed.
+This section describes how to implement efficiently a stack. This discussion is theoretical. It does not deal directly with call stack management but concepts explained here will be used in the book. Different implementations of stacks in Pharo are described and discussed. What is important to realize is that having an adequate stack implementation is important for VM implementations. Notice that often such implementation are in C.  
+
+
+!! About Pharo stack implementation
 
 Unfortunately, even if there are many good ways to implement a stack, the ==Stack== class available in Pharo has unconventional inherited APIs and is inefficient, so it can't be used as a reference and is missleading for unaware developers. It's not worth looking at while reading this section.
 
@@ -55,36 +58,46 @@ The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can con
 
 A stack is a restrictive ==OrderedCollection==. The efficient implementation of a stack is therefore quite similar to the implementation of ==OrderedCollection== in Pharo. 
 
-The naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while the stackPointer hold the index of the top of the stack.
+The naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
 
 %schema example
 
-Here is an example of how a stack could be implemented in Smalltalk:
+Here is an example of how a stack could be implemented:
 
 [[[
 Object subclass: #Stack
 	instanceVariableNames: 'array stackPointer'
 	classVariableNames: ''
-	category: 'Collection-Stack'
-	
-Stack class>>new: size
-	^ self basicNew initializeWithSize: size
-	
-Stack class>>new
-	^ self new: 10
+	package: 'Collection-Stack'
+]]]
 
-Stack>>initializeWithSize: size
+[[[	
+Stack class >> new: size
+	^ self basicNew initializeWithSize: size
+]]]
+
+[[[	
+Stack class >> new
+	^ self new: 10
+]]]
+
+[[[
+Stack >> initializeWithSize: size
 	array := Array new: size.
 	stackPointer := 0.
+]]]
 
-Stack>>pop
+[[[
+Stack >> pop
 	| top |
 	stackPointer <= 0 ifTrue: [ self error: 'stack underflow' ].
 	top := array at: stackPointer.
 	stackPointer := stackPointer - 1.
 	^ top
+]]]
 
-Stack>>push: value
+[[[
+Stack >> push: value
 	stackPointer >= array size ifTrue: [ self error: 'stack overflow' ].
 	^ array at: (stackPointer := stackPointer + 1) put: value
 ]]]
@@ -104,13 +117,15 @@ In this case, the operations performed on the stack are known in advance and the
 The stack code can be simplified to remove the stack underflow and overflow checks.
 
 [[[
-Stack>>pop
+Stack >> pop
 	| top |
 	top := array at: stackPointer.
 	stackPointer := stackPointer - 1.
 	^ top
+]]]
 
-Stack>>push: value
+[[[
+Stack >> push: value
 	^ array at: (stackPointer := stackPointer + 1) put: value
 ]]]
 
@@ -121,11 +136,13 @@ In the next section, this implementation of the stack will be referred as the fi
 This is the approach used by ==OrderedCollection== in Pharo. Growing the stack implies the creation of a larger array with the previous array elements. Here is possible code:
 
 [[[
-Stack>>push: value
+Stack >> push: value
 	stackPointer >= array size ifTrue: [ self growStack ].
 	^ array at: (stackPointer := stackPointer + 1) put: value
-	
-Stack>>growStack
+]]]
+
+[[[	
+Stack >> growStack
 	| newArray |
 	newArray := Array new: array size * 2.
 	array withIndexDo: [ :value :index |
@@ -139,36 +156,42 @@ This approach is reasonable but not good enough in our case. There are many prob
 
 !!! Stack pages stack
 
-This is the approach usually used by call stacks. The stack starts to grow in a fixed-sized array called stack page. When the stack page overflows, the stack keep growing on another stack page. Stack pages all have the same size, so they can be easily reused between multiple stacks. The stack is represented in memory as a linked list of stack pages. At worst, the stack wastes the size of a stack page of memory.
+This is the stack implementation usually used for call stacks. 
+The stack uses a fixed-size array (called a stack page) and when this array is full, a new one is allocated (with a pointer back to the previous one). Other said, the stack starts to grow in a fixed-sized array called stack page. When the stack page overflows, the stack keeps growing on another stack page. Stack pages all have the same size, so they can be easily reused between multiple stacks. The stack is represented in memory as a linked list of stack pages. At worst, the stack wastes the size of a stack page of memory.
 
-A full linked list approach, where each value on stack needs a reference to the previous value, leads to many memory reads spread in memory which decreases performance and important memory footprint. 
+A full linked list implementation, where each value on stack needs a reference to the previous value, leads to many memory reads spread in memory which decreases performance and important memory footprint. 
 
-This stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack. One can see this representation as an hybrid version between an array and a linked list.
+Here is a possible implementation. Note that the stackPointer points to top of stack (the place where a value was added or at the start). 
 
-Here is possible code:
 
 [[[
-Stack>>initializeWithSize: size
+StackedPageStack >> initializeWithSize: size
 	array := Array new: size.
 	stackPointer := 1.
+]]]
 
-Stack>>pop
+[[[
+StackedPageStack >> pop
 	| top |
 	stackPointer <= 1 ifTrue: [ 
-	"The first value of each stack page is nil for the first 
-	stack page else a reference to the previous stack page."
+		"The first value of each stack page is nil for the first 
+		stack page else a reference to the previous stack page."
 		(array at: stackPointer)
 			ifNil: [ self error: 'stack underflow']
 			ifNotNil: [ :previousPage | self previousStackPage: previousPage ] ].
 	top := array at: stackPointer.
 	stackPointer := stackPointer - 1.
 	^ top
+]]]
 
-Stack>>push: value
+[[[
+StackedPageStack >> push: value
 	stackPointer >= array size ifTrue: [ self nextStackPage ].
 	^ array at: (stackPointer := stackPointer + 1) put: value
-	
-Stack>>nextStackPage
+]]]
+
+[[[	
+StackedPageStack >> nextStackPage
 	| newArray |
 	newArray := Array new: array size.
 	"We keep a reference to the previous page
@@ -176,11 +199,15 @@ Stack>>nextStackPage
 	newArray at: 1 put: array.
 	array := newArray.
 	stackPointer := 1.
-	
-Stack>>previousStackPage: previousPage
+]]]
+
+[[[	
+StackedPageStack >> previousStackPage: previousPage
 	array := previousPage.
 	stackPointer := previousPage size.
 ]]]
+
+This stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack. One can see this representation as an hybrid version between an array and a linked list.
 
 %figures
 
