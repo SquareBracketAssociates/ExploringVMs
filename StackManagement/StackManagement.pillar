@@ -13,7 +13,7 @@ This part of the book deals with call stack management, especially when the exec
 
 To master all the concepts exposed, the reader has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang.
 
-Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Sections 3 and 6 and read the Sections 2 and 9 to continue reading the book. The Sections 4, 5, 7 and 8 deals with interpreters using a native stack and are not required to understand the next parts of the book.
+Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Chapters 3 and 6 and read the Chapters 2 and 9 to continue reading the book. The Chapters 4, 5, 7 and 8 deals with interpreters using a native stack and are not required to understand the next parts of the book.
 
 %todo put real links to sections
 
