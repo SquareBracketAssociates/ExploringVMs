@@ -207,6 +207,44 @@ StackedPageStack >> previousStackPage: previousPage
 	stackPointer := previousPage size.
 ]]]
 
+Here are two tests illustrating the behavior of ==StackPageStack==
+
+[[[
+StackPageStackTest >> testPopDropStackPage
+	
+		| stack res |
+		stack := StackedPageStack new initializeWithSize: 3.
+		stack push: $A.
+		stack push: $B.
+		"current stack page is full. nil | A | B"
+		stack push: $C.
+		self assert: stack stackPointer = 2.
+		"a stack page has been created. (nil | A | B)| C | nil"
+		res := stack pop.
+		self assert: res = $C.
+		self assert: stack stackPointer = 1.
+		res := stack pop. 
+		"here we drop the page"
+		self assert: res = $B.
+		self assert: stack stackPointer = 2.
+		self assert: stack array = #(nil $A $B).
+]]]
+
+[[[
+StackPageStackTest >> testPushGrow
+
+		| stack |
+		stack := StackedPageStack new initializeWithSize: 3.
+		stack push: $A.
+		stack push: $B.
+		stack push: $C.
+		"here we create a new stack page and we reserve the first element 
+		to point to the previous page"
+		self assert: (stack array at: 2) = $C
+	
+]]]
+
+
 This stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack. One can see this representation as an hybrid version between an array and a linked list.
 
 %figures
