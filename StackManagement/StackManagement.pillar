@@ -252,7 +252,7 @@ This stack representation needs only extra memory and distant memory reads to sw
 
 ! SmiLang: A Simple Integer Language
 
-During this tutorial, the reader will implement several interpreters of the language SmiLang. “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and primitive operations on Smis.
+During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
 
 !! SmiLang Basics
 SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
