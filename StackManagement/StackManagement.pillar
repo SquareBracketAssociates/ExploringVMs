@@ -112,7 +112,7 @@ This subsection discusses firstly the case where stack overflow and underflow ca
 
 !!! Fixed-sized stack
 
-In this case, the operations performed on the stack are known in advance and the program know for sure the maximum size of the stack and that there will be no stack underflows nor stack overflows. 
+In this case, the operations performed on the stack are known in advance and the program knows for sure the maximum size of the stack and that there will be no stack underflows nor stack overflows. 
 
 The stack code can be simplified to remove the stack underflow and overflow checks.
 
@@ -341,18 +341,18 @@ Let us explain this Figure class by class.
 - Lastly, the ==stack== field references the stack. The context’s stack values are specific to the function activation and independent from other contexts. The values are unrelated to other function activations.
 
 !!!! Function.
-- ==Function name== is useful for debugging purpose.
-- ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the section).
-- ==maxStackSize== . For performance reason, the Context, on creation, allocate for its stack enough space for the maximum size its stack can have. The maximum size that the stack can have is specified in the function by the compiler (see field name max stack size which holds 7 in  Figure *@context1*). 
+- The field ==name== is useful for debugging purpose.
+- The fields ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the section).
+- ==maxStackSize== . For performance reason, the context, on creation, allocates for its stack enough space for the maximum size that its stack can take during the function execution. This maximum size is specified by the compiler. In Figure *@context1* the field ==maxStackSize== holds 7. 
 
 !!!! Stack.
 
-A stack is associated to each context, i.e., each function activation. A context's stack is composed in order as follow:
+A stack is associated to each context, i.e., each function activation. A context's stack is composed by the following values. Note that the ordered is important:
 # The values of the function arguments.
 # The values of the temporary variables.
 # The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the *fixed-size stack* design described in the second section. Instead of creating a separate data structure, to limit the number of memory reads, the context directly holds the stackPointer and the array required by the stack representation (this array is named ==stack== in the implementation you will work on).
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the *fixed-size stack* design described in the second section. Instead of creating a separate data structure, to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on).
 
 !! Concrete Example: Activation of function add:to:
 
@@ -367,7 +367,7 @@ This function is invoked in particular by the function ==example07TempAndCallAnd
 stream << (SmiExamples>>#example07TempAndCallAndCallArgs) sourceCode asPillarSourceCode.
 ]]]
 
-In Figure *@context2*, the Context represents the activation of the function ==add:to:== within the function ==example07TempAndCallAndCallArgs==.
+In Figure *@context2*, the context represents the activation of the function ==add:to:== within the function ==example07TempAndCallAndCallArgs==.
 
 The sender field holds the activation of the function ==example07TempAndCallAndCallArgs==. As we can see, the function has a call to the function ==add:to:==.
 
@@ -383,30 +383,34 @@ The current stack holds the values of the 2 arguments and the spilled value 2 du
 
 
 !! Interpretation
+Now let us look at two examples of execution. 
 
-""Example 1:"" Interpretation of ==1 + 2==
 
-The figure *@contextInterpretation1* shows the state of a context's stack at each pc during the execution of 1 + 2.
++Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=50|label=contextInterpretation1+ 
 
-+Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=70|label=contextInterpretation1+ 
+!!! Example 1: Interpretation of ==1 + 2==
 
-- ""Step 1"": When the interpretation of 1 + 2 starts, stack pointer is at 0, 2 slots are already allocated on stack for the computation, pc is 1.
+Figure *@contextInterpretation1* shows the state of a context's stack at each pc during the execution of 1 + 2.
 
-- ""Step 2"": First instruction execution (pushSmi 1): the constant 1 is pushed on stack. StackPointer is now 1.
 
-- ""Step 3"": Second instruction execution (pushSmi 2):  the constant 2 is pushed on stack. Stack Pointer is now 2.
 
-- ""Step 4"": Third instruction execution (primitive +):  the two constants are popped from the stack, the interpreter computes the result (by asking the host language or the cpu) , and pushes the result on stack. The stack pointer is now 1. The value at the second stack position is 2 but it should not be reached by execution any more.
+- ""Step 1"": When the interpretation of 1 + 2 starts, stackPointer is at 0, 2 slots are already allocated on stack for the computation, pc is 1.
 
-""Example 2:"" Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
+- ""Step 2"": First instruction execution (pushSmi 1): the constant 1 is pushed on stack. stackPointer is now 1.
 
-+Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=72|label=contextInterpretation2+
+- ""Step 3"": Second instruction execution (pushSmi 2):  the constant 2 is pushed on stack. stackPointer  is now 2.
 
-The first steps of the interpretation are drawn in figure *@contextInterpretation2*. Try to draw or imagine the next steps.
+- ""Step 4"": Third instruction execution (primitive +):  the two constants are popped from the stack, the interpreter computes the result (by asking the host language or the cpu) , and pushes the result on stack. stackPointer is now 1. The value at the second stack position is 2 but it should not be reached by execution any more: it is what is called a spilled value.
+
+!!!Example 2: Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
+
++Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=55|label=contextInterpretation2+
+
+The first steps of the interpretation are drawn in Figure *@contextInterpretation2*. Try to draw or imagine the next steps.
 
 !! Calls and Returns
 
-In the two first examples we described the instructions that applied inside a function activation. Now let’s discuss the two interesting instructions, function calls and returns. They require the creation or the termination of a function activation.
+In the two first examples we described the instructions that work inside a function activation. Now let’s discuss the two interesting instructions, function calls and returns. They require the creation or the termination of a function activation.
 
 !!! Function calls
 
@@ -414,22 +418,55 @@ The call instruction creates a new context, pops the arguments from the top of t
 
 !!! Returns
 
-The returnTop instruction pushes the top of stack of the active context on the top of stack of the sender context. It then terminates the active context and resumes execution in the sender context.
+The returnTop instruction pushes the top of the stack of the active context on the top of stack of the sender context. It then terminates the active context and resumes execution in the sender context.
 
 !! Build a Context Interpreter
 
 In this exercise, you will build a context Interpreter.
 
-Open a Pharo 4 image, load the package SmiLang you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+Open a Pharo image, load the package ""SmiLang"" you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
 
-Go to the package tag ==SmiLang>>Context== interpreter. A class SmiContext is given and is a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+You can use the following repository description:
+[[[
+MCSmalltalkhubRepository
+	owner: 'ClementBera'
+	project: '3DaysVM'
+	user: ''
+	password: ''
+]]]
 
-The interpretation starts with a fake Context which holds flags. The Interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, precise the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
+The package SmiLang contains several tags each one grouping the classes corresponding to different aspects of SmiLang: compiler, context interpreter, stack interpreter, and tests.
 
-The SmiContextInterpreterTests have to pass.
-We suggest to look at the code and the compiled version of the examples.
+For now let us focus on the context interpreter and its companion test class ==SmiContextInterpreterTests==. A class ==SmiContext== is given as a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). You will have to define them. 
 
-Good luck and have fun.
+
+The interpretation starts with a fake Context which holds flags. The interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, specifies the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
+
+The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. We suggest to look at the code and the compiled version of the examples. 
+
+Here is the code of the first test, where you see the definition and instructions of the method 
+under test and the actual test.
+
+[[[
+testExample1
+	"This test ensures that the execution of the function example01Return is correct.
+	-- Source code --
+	example01Return
+	^ 1
+	-- Instructions --
+	<1> push 1
+	<2> returnTop"
+	self
+		assert: (self runSmiFunction: (self compilePharoMethod: SmiExamples>>#example01Return))
+		equals: 1
+]]]
+
+
+
+Good luck and have fun. In the subsequent chapter you will develop a better interpreter. 
+
+
+
 
 ! Simple Stack Interpreter
 
