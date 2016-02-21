@@ -207,7 +207,7 @@ StackedPageStack >> previousStackPage: previousPage
 	stackPointer := previousPage size.
 ]]]
 
-Here are two tests illustrating the behavior of ==StackPageStack==
+The two tests illustrate the behavior of ==StackPageStack==.
 
 [[[
 StackPageStackTest >> testPopDropStackPage
@@ -278,7 +278,7 @@ The Smi language has 7 instructions:
 exampleSelectors := #(#one #add:to: #example07TempAndCallAndCallArgs).
 selectorTexts := {
 	#one -> 'zero argument function which returns the constant Smi 1' .
-	#add:to: -> '2 arguments function which adds the values of the 2 arguments and returns it' .
+	#add:to: -> '2 argument function which adds the values of the 2 arguments and returns it' .
 	#example07TempAndCallAndCallArgs -> 'zero argument function with two static function calls. It also uses a temporary variable'
 	} asDictionary.
 	
@@ -315,30 +315,30 @@ The complete SmiLang has been introduced. This language may not be usable for a 
 
 ! Context Interpreter
 
-A context interpreter is an interpreter which represents the activation of each function by a data structure called context. The call stack is composed of a linked list of contexts.
+A context interpreter is an interpreter which represents the activation of each function call by a data structure called a context. The call stack is composed of a linked list of contexts.
 
 !! What is a Context ?
 
-A Context is a data structure which represents a function activation. In this section, contexts are instances of the class ==SmiContext==.
+A ""context"" is a data structure which represents a function activation. In this chapter, contexts are instances of the class ==SmiContext==.
 
-A Context holds information such as:
-- The values of local variables
-- The program counter (also called instruction pointer)
-- The function being executed (because the function holds the instruction to be executed)
-- The context that activated it (also called caller or sender)
+A context holds information such as:
+- The values of local variables.
+- The program counter (also called instruction pointer).
+- The function being executed (because the function holds the instructions to be executed).
+- The context that activated it (also called caller or sender).
 
-Figure *@context1* shows a given computation state showing the relationships between context, stack, function and instructions in SmiLang.
+Figure *@context1* presents a given computation state showing the relationships between context, stack, function, and instructions in SmiLang.
 
 +Relationships between Context, Stack, Function and Instructions in a context interpreter.>file://figures/context1.pdf|width=75|label=context1+
 
 Let us explain this Figure class by class.
 
 !!!! Context.
-- The sender field of the Context references another context, the one which activated it. Such context chain is created during function call: the sender context has temporarily stopped its execution just after the function call that activated the described context.
-- The program counter field holds 3, which means the next instruction the Interpreter will execute is the third instruction of the function.
-- The function field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed. 
-- The stack pointer field holds 6, which means that in the space allocated for this specific context stack, which is in our case 7, only 6 values are currently used and the value at position 6 is the top of the stack.
-- Lastly, the context references the stack. The context’s stack values are specific to the function activation and independent from other contexts. The values are unrelated to other function activations.
+- The ==sender== field of the context references another context, the one which activated it. Such context chain is created during function call: the sender context has temporarily stopped its execution just after the function call that activated the described context.
+- The ==program counter== field holds 3, which means the next instruction the interpreter will execute is the third instruction of the function.
+- The ==function== field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed. 
+- The ==stack pointer== field holds 6, which means that in the space allocated for this specific context stack, which is in our case 7, only 6 values are currently used and the value at position 6 is the top of the stack.
+- Lastly, the ==stack== field references the stack. The context’s stack values are specific to the function activation and independent from other contexts. The values are unrelated to other function activations.
 
 !!!! Function.
 - ==Function name== is useful for debugging purpose.
