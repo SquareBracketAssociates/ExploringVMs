@@ -1,26 +1,81 @@
 ! Overview of the Kernel Construction
 
-Goal: build a snapshot. Most language do that blabla for startup perf. Extend the kernel to load code.
+Every language has some kind of bootstrap:
+st80 -> Basic
+other written C/C++
+other Java previous version (matters to keep being able to reconstruct things)
+
+build the minimum snapshot.
+
+not done each time for start-up perf.
+
+Once kernel running, it should be able to load code and not use bootstrap no more.
+
+Goal: build a snapshot, specificities of smalltalk snapshot.
+
+preoptimized / optimized kernel from the bootstrap.
 
 ! Theory: Representing objects in memory
 
-Header + fields.
+In this theoretical section, the representation in memory of objects is discussed. The discussion goes from the array of bytes conceptually available in the RAM to the object.
 
-Pick an example like a point and explain how things are from the oop.
+The memory representation presented is the one you will implement for your language. Once you have understood it, you will be able to rethink it and maybe change your implementation.
 
-Our design:
+! Head first: Mapping an object to raw bytes
+
+Let's create an object, look at the raw bytes in memory corresponding to the object and understand what they mean.
+
+We will assume that we are on a 32 bits big endian machine for this example.
+
+For this purpose, a message send object is created corresponding to *1 \+ 2*.
+
+[[[
+MessageSend new
+	receiver: 1;
+	selector: #+;
+	arguments: #(2);
+	yourself
+]]]
+
+Once created, the virtual machine knows that the address of the object is, let's say, *0x00001464*
+
+If we look at the bytes around that memory location, we have something like that (32 bits are shown per line):
+
+[[[
+Memlocation 01 02 03 04
+ ...
+ 0x00001448 00 00 00 0C 
+ 0x00001452 4A 10 F5 64
+ 0x00001456 4A 30 C2 18
+ 0x00001460 03 4C B3 D0
+-0x00001464 00 00 00 03
+ 0x00001468 4A 3F CC B8
+ 0x00001472 4A 3E 01 D4
+ ...
+]]]
+
+All these bytes correspond to the object. (maybe remove and show more lines.)
+
+Header + fields => show which bytes are what.
+
+Our header design:
 object size in byte 
 gc field
 class pointer 
 format (1 byte) hash (1 to 7 bytes)
-field 1 x
-field 2 y
+
+=> map each byte to what
+
+field design
+field 1 receiver
+field 2 selector
+field 3 arguments
+
+=> map each byte for what.
 
 representation of integers ...
 
-Discuss the representation from a byteArray extracted from the RAM.
-
-Endianness
+Endianness example => where is the format where is the hash.
 
 Then go to bytearray & array
 
@@ -45,16 +100,142 @@ This kernel was designed to be able to run on 64k so one can build a 16b mem man
 
 Discussion:
 
-Is a Dictionary and method dict same class a good idea ?
+--> Is a Dictionary and method dict same class a good idea ?
 Number of memory reads compared to implemenation of literal variables
+memory footprint.
 
 Core libraries and VM support
 => they depend on each other, typically maintained by same crew. Performance lies a lot with kernel libraries. Looking at each bytecode / machine code. Discuss intrinsec in Dart aka optimization primitives
 
 ! Understanding the 30 classes Kernel
 
+!! Object
+
+  = = ~~ DNU ifNil: perform: printing yourself
+
+!! Behaviors
+
+Based on your knowledge from the Object-V-Lisp Kernel, draw a class diagram of Behavior, Object, Class and Metaclass as well as all the classes in between. 
+
+What does all the instance variables of Behavior superclass, methodDict and format mean ? What values they should hold ?
+
+Explain what the variable thisClass corresponds to in Metaclass. Wa it possible to have such a variable in the Object-V-Lisp Kernel and why ? How many Metaclasses do you have in Pharo comparedd to the number of Classes ?
+
+(optional) Explain the difference between a Class Variable and the instance variable of a class.
+
+!! Boolean
+
+How would you implement Boolean in an object language ?
+
+How is ifTrue:ifFalse: implemented conceptually and practically ? If you don’t understand closures very well, explain the implementation of not instead.
+
+!! UndefinedObject
+
+initialization of objects
+
+What is it and why. Only ifNil: ifNotNil:  not to pollute its API.
+
+!! Magnitudes
+
+Numbers
+How would you implement numbers using objects ? 
+
+Draw on a paper an inheritance graph which includes Float, SmallInteger, LargeInteger, Object and all the classes needed in-between to have the full graph.
+
+Which numbers are represented by SmallIntegers ? What does SmallInteger maxVal answer and what does it correspond to ?
+
+How is implemented the addition between two numbers ? 
+
+(optional) Explain how LargeInteger and Float are implemented
+
+Character
+
+!! Collection 
+
+Draw on a paper an inheritance graph which includes OrderedCollection, Array, Set and Object and all the classes needed in between to have the full graph.
+
+What is the difference between OrderedCollection, Array and Set ? In which case would you use an OrderedCOllection, an Array or a Set ? If you can’t answer this question, please read the section about Collection in Smalltalk Best Practice Patterns by Kent Beck.
+
+Explain the implementation of OrderedCollection (what do its instance variables mean, how is implemented add:, at:, addFirst:, size, includes: ).
+
+Explain the implementation of Array. How is implemented at:, at:put:, size ?
+
+Explain the implementation of Set, especially add: and includes:. Your explanation should mention hashes.
+
+What is a Dictionnary ? Explain the implementation of a dictionary. The lookup is done using the implementation details of a dictionary to avoid iterating over all the elements for all the superclasses to find the method to activate.
+
+!! Runtime support
+
+... Discussed in previous sections !  
+
 ! Exporting the Kernel
 
 Building the first snapshot.
 
 Addresses are relative to beginning of snapshot.
+
+! Rethinking the Memory representation
+
+In this section we discuss what was good in this memory representation and what was not. To do so, we firstly discuss how one can evaluate if a memory representation is good or not, then we discuss the application on the design used in this part of the book
+
+!! What is a good Memory Representation ?
+
+!!! Compactness
+
+The first and most critical point of a good memory representation is the compactness. For a given set of objects that represents the average heap the virtual machine will have to handle, how many bytes does the virtual machine need to represent them all ? The memory footprint has to be as little as possible to have a good virtual machine.
+
+The compactness involves the memory representation of object headers but also the implementation of the core libraries. 
+
+For example, in the current design, we use the last object's header field to store both the hash and the format of the object. If we had used two fields, the virtual machine would need an extra 4 bytes per object to represent the same set of objects, though that might be convenient as a 32 bits hash would lead to less hash conflicts than 24 bits hash. The header's representation has to be as compact as possible.
+
+On the other hand, the size of compiled code depends a lot on the size of the bytecodes. Reducing the memory footprint of compiled code may depend more on changing the bytecode set design. In a similar way, Strings are represented in the micro kernel as an array of Characters. They are the array themselves, and they do not hold an instance variable which is an instance of Array, which is already some kind of memory optimizations as it saves a few bytes per String. One can even do better: in english, most strings hold only ASCII characters which can be encoded in a single byte. Hence, one could design another memory representation of Strings in the form of a byte array, holding directly the ASCII code of each character, to encode most strings and save even more space.
+
+!!! Fast Access
+
+The second main evaluation point of a good memory representation for objects is the access speed to the different object features. The idea here is to compute precisely how many instructions the interpreter and the machine code generated by the JIT compiler will need to access specific information about an object. 
+
+Let's take a simple example. In a specific virtual machine, one wants to have for each object to have:
+- 22 bits holding the hash of the object
+- 1 byte specifying the object format
+- 2 bits that the garbage collector uses to mark objects in different states
+
+As these information can fit in 32 bits, the programmer will fit them in a single 32 bit word not to waste any memory (compactness is the first point of evaluation). Now, how will the programmer design its object header ?
+
+Here is an example (still big endian)
+[22 bits hash][8 bits object format][2 bits GC]
+
+discuss byte access, two byte access, word access etc. 
+
+This design is terrible. Let's estimate the cost of each access:
+- hash: 1) read the 32 bits word 2) bitShift 10
+- object format: 1) read the 32 bits word 2) bitshift 2 3) bitAnd 1 << 8 - 1
+- 2 bits GC: 1) read the bottom byte 2) bitAnd: 3
+
+Format is frequently accessed in several objects such as array for bounds check.
+
+Let's look at another design
+[8 bits object format][2 bits GC][22 bits hash]
+Estimation of the cost per read:
+- hash: 1) read the 32 bits word 2) bitAnd 1 << 22 - 1
+- object format: 1) read the top byte
+- 2 bits gc: 1) read second byte 2) bitshift: 1 << 6 - 1
+
+Design is way better because faster object format while other instructions are as fast.
+
+at: and at:put: nd size perf difference is huge between those 2 representation, and they are performance critical primitives.
+
+!!! Features
+
+become, becomeForward, dynamically growing objects such as python or Javascript
+
+!! How can we improve the current design ?
+
+very compact object header: class index, only few bits for GC (though moving then requires allocated table).
+
+core library such as string and symbol (look at pharo)
+new memory representation for WordArray, ShortArray etc
+more specialized bytecode set (fast interpreter too !)
+compiled method header
+MethodDictionary -> both perf and memory footprint changed.
+OrderedCollection -> space wasted, heuristic between free space and copying
+Runtime objects such as context could have the stack inlined as fixed sized, implying new memory format for mixed inst var and variable slots.
