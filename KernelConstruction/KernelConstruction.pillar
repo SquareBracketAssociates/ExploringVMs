@@ -1,0 +1,60 @@
+! Overview of the Kernel Construction
+
+Goal: build a snapshot. Most language do that blabla for startup perf. Extend the kernel to load code.
+
+! Theory: Representing objects in memory
+
+Header + fields.
+
+Pick an example like a point and explain how things are from the oop.
+
+Our design:
+object size in byte 
+gc field
+class pointer 
+format (1 byte) hash (1 to 7 bytes)
+field 1 x
+field 2 y
+
+representation of integers ...
+
+Discuss the representation from a byteArray extracted from the RAM.
+
+Endianness
+
+Then go to bytearray & array
+
+! Designing a 30 classes Kernel
+
+!! Elements needed in the Kernel
+
+build a simple for self hosting runtime kernel:
+
+a number and nil / true / false
+class, => method dict => array and association and symbol and compiledCode => literals and ByteArray and Array 
+Minimum for running code: context, closure, compiled code, message for dnu.
+link between VM and image + global accesses: Smalltalk => special object array and global dict holding
+
+We will add one extra class, OrderedCollection (= list) which is essential to build anything. In fact minimum kernel bootstrapped needs to be able to load code. Build a code load implies a few things: getting data from a server or from a file, a compiler, all these tools are difficult to build on micro kernel so one may need more.
+
+Discussion on kernel modularity. => our microkernel could be viable on embedded device, even could be too big due to OrderedCollection and Strings and nil. A few classes could be removed / compressed => run with behaviors not classes as cross compiled and no name. Debugging become tough (attach metadata)
+
+This kernel was designed to be able to run on 64k so one can build a 16b mem manager easily if he wants to.
+
++Micro Kernel.>file://figures/MicroKernel.pdf|width=100|label=MicroKernel+
+
+Discussion:
+
+Is a Dictionary and method dict same class a good idea ?
+Number of memory reads compared to implemenation of literal variables
+
+Core libraries and VM support
+=> they depend on each other, typically maintained by same crew. Performance lies a lot with kernel libraries. Looking at each bytecode / machine code. Discuss intrinsec in Dart aka optimization primitives
+
+! Understanding the 30 classes Kernel
+
+! Exporting the Kernel
+
+Building the first snapshot.
+
+Addresses are relative to beginning of snapshot.
