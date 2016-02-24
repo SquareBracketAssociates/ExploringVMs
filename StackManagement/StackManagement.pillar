@@ -13,9 +13,7 @@ This part of the book deals with call stack management, especially when the exec
 
 To master all the concepts exposed, the reader has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang.
 
-Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Chapters 3 and 6 and read the Chapters 2 and 9 to continue reading the book. The Chapters 4, 5, 7 and 8 deals with interpreters using a native stack and are not required to understand the next parts of the book.
-
-%todo put real links to sections
+Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Chapters *@ContextInterpreter* and *@ClosureContextInterpreter* and read the Chapters *@StackImplementation* and *@Discussion* to continue reading the book. The Chapters *@StackInterpreter*, *@StackPages*, *@ClosureStackInterpreter1* and *@ClosureStackInterpreter2* deals with interpreters using a native stack and are not required to understand the next parts of the book.
 
 !!!! Concepts
 Readers will learn the following concepts during this tutorial:
@@ -44,23 +42,69 @@ Thanks to Cyril Ferlicot and Vincent Blondeau for the early reviews and runs of 
 
 
 ! Theory: Stack Implementation
+@StackImplementation
 
-This section describes how to implement efficiently a stack. This discussion is theoretical. It does not deal directly with call stack management but concepts explained here will be used in the book. Different implementations of stacks in Pharo are described and discussed. What is important to realize is that having an adequate stack implementation is important for VM implementations. Notice that often such implementation are in C.  
+This section describes how to implement efficiently a stack. This discussion is theoretical and does not not deal directly with call stack management. However, efficient call stack management relies on efficient stack implementations, hence it's a direct application of what is described in this section. In fact, in the different interpreter, we will refer to this section to explain which stack implementation was chosen and why it seemed to be the best performance-wise.
 
+Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following subsections. There is not such a thing as a very efficient *generic* stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
 
-!! About Pharo stack implementation
-
-Unfortunately, even if there are many good ways to implement a stack, the ==Stack== class available in Pharo has unconventional inherited APIs and is inefficient, so it can't be used as a reference and is missleading for unaware developers. It's not worth looking at while reading this section.
+In high-level languages such as Pharo, people usually use ==OrderedCollection== to represent different more restrictive data structures such as stacks or queues. Hence, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
 
 The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are ""not"" part of a conventional stack APIs.
 
-!! Naive Implementation
+!! Naive Implementations
 
-A stack is a restrictive ==OrderedCollection==. The efficient implementation of a stack is therefore quite similar to the implementation of ==OrderedCollection== in Pharo. 
+!!! Linked List implementation
 
-The naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
+The first naive implementation is to represent a stack as a linked list. The stack keeps a reference to the top element, and each element keeps a reference to the previous element on stack, or nil if it's the bottom element.
 
-%schema example
+[[[
+Object subclass: #Stack
+	instanceVariableNames: 'topElement'
+	classVariableNames: ''
+	package: 'Collection-Stack'
+]]]
+
+[[[
+Object subclass: #StackElement
+	instanceVariableNames: 'previousElement element'
+	classVariableNames: ''
+	package: 'Collection-Stack'
+]]]
+
+[[[	
+Stack >> push: value
+	topElement := StackElement new
+	    previousElement: topElement;
+		element: value;
+		yourself.
+	^ value
+]]]
+
+[[[	
+Stack >> pop
+	^ topElement 
+	    ifNil: [ self error: 'stack underflow' ]
+		ifNotNil: [ 
+		    | value |
+			value := topElement element.
+			topElement := topElement previousElement.
+			value ]
+]]]
+
+This is the implementation that is currently used in Pharo. 
+
+It has the big advantage that it cannot overflow as long as there are memory available. In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
+
+It has however several big problems:
+- each element requires an indirection to keep the reference to the previous element through an instance of ==StackElement==. This implies a massive memory overhead if the stack hold small elements as ==SmallInteger== instances (each value on stack is represented in a single machine word, whereas the stack element requires an extra machine word to refer to the previous element). In addition, accessing an element of the stack requires two memory reads, one to read the instance of ==StackElement==, one to read the element itself.
+- each element can be very far in memory from the the previous element, leading to many cpu cache miss when pushing and popping elements on stack often.
+
+This implementation cannot be used directly as it is dog slow and has a significant memory overhead compared to the next implementations. However, better designs are inspired from this naive version.
+
+!!! Array implementation
+
+The other naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
 
 Here is an example of how a stack could be implemented:
 
@@ -102,19 +146,27 @@ Stack >> push: value
 	^ array at: (stackPointer := stackPointer + 1) put: value
 ]]]
 
-% schema example.
+The main drawback of this second naive implementation is that the stack can overflow if the programmer has not anticipated the maximum size that it could reach, which is sometimes very difficult to do. 
+
+Another drawback is that is the array allocated is huge and the stack uses in practice most of the time a very small portion of the array, most of the space allocated by the array is wasted.
+
+However, if the average number of elements on stack is fairly close to the maximum stack size, the memory consumption of this implementation is likely to be smaller than the previous implementation.
+
+Moreover, it does not require extra indirection to access elements, providing faster access. All the element references are next to each other in memory, hence accessing successively to several elements will likely to end up in a cpu cache hit, greatly improving the performance.
 
 !! Advanced implementations
 
-There are different problems with the naive implementation. Firstly, the common operations ==push:== and ==pop== require stack overflow and underflow checks, decreasing their performance. Secondly, upon stack overflow, an error is raised. It could be convenient, as for ==OrderedCollection==, that the stack dynamically grow instead of raising an error.
+The advanced implementation are directly inspired from the array implementation. They tackle two main problems:
+- how to handle stack overflow so that the stack can dynamically grow without wasting too much memory and execution time
+- how to remove the stack overflow and underflow checks in the ==push:== and ==pop== operations.
 
-This subsection discusses firstly the case where stack overflow and underflow can't happen and secondly how to grow dynamically the stack
+The next subsection discusses the case where stack overflow and underflow can't happen. The last subsection deals with dynamic growth and shrink of the stack.
 
 !!! Fixed-sized stack
 
-In this case, the operations performed on the stack are known in advance and the program knows for sure the maximum size of the stack and that there will be no stack underflows nor stack overflows. 
+For this implementation, we assume that the operations performed on the stack are known in advance so the program can know for sure the maximum size of the stack that will used. Hence, a stack of the maximum expected size can be allocated to avoid stack overflows. In addition, based on a simple analysis of the operations that will be performed on the stack, the program can know before creating the stack if there will be a stack underflow or not, and raise the error before creating the stack instead of checking at each ==pop== operations.
 
-The stack code can be simplified to remove the stack underflow and overflow checks.
+The stack code or the array implementation can be simplified to remove the stack underflow and overflow checks.
 
 [[[
 Stack >> pop
@@ -129,7 +181,11 @@ Stack >> push: value
 	^ array at: (stackPointer := stackPointer + 1) put: value
 ]]]
 
-In the next section, this implementation of the stack will be referred as the fixed-sized stack.
+Growing the stack is useless in this implementation as the stack can't overflow.
+
+This implementation is likely the most efficient possible (modulo some micro machine specific optimizations). However, using it implies knowing in advance if the maximum size the stack can have and ensuring it won't underflow.
+
+In the next subsection, this implementation of the stack will be referred as the ""fixed-sized stack"".
 
 !!! Copying stack
 
@@ -150,18 +206,29 @@ Stack >> growStack
 	array := newArray.
 ]]]
 
-This approach is reasonable but not good enough in our case. There are many problems. For example, the stack grows but never shrinks, leading to huge memory footprint in some cases. Adding support for stack shrinking is difficult to do without decreasing the performance of pop. Another problem is that it is difficult to share the arrays between stacks as they have different sizes.
+Once the stack has grown, it can push new elements until it overflows again and then grow again.
 
-%figrues
+This approach is reasonable but not good enough in our case. There are several problems. 
+
+Firstly, the stack grows but never shrinks, leading to huge memory footprint in some cases. Adding support for stack shrinking is difficult to do without decreasing the performance of ==pop== (it would need an extra check in addition of the stack underflow check). 
+
+Secondly, the data structure used by the stack, the array has a different size depending on the size the stack had when it overflowed. Hence, it is likely that once the stack has grown, the previous array used will need to be garbage collected and can't be directly reused by another instance of stack which would need an array of the same size.
 
 !!! Stack pages stack
 
-This is the stack implementation usually used for call stacks. 
-The stack uses a fixed-size array (called a stack page) and when this array is full, a new one is allocated (with a pointer back to the previous one). Other said, the stack starts to grow in a fixed-sized array called stack page. When the stack page overflows, the stack keeps growing on another stack page. Stack pages all have the same size, so they can be easily reused between multiple stacks. The stack is represented in memory as a linked list of stack pages. At worst, the stack wastes the size of a stack page of memory.
+This is the stack implementation usually used for most call stacks.
 
-A full linked list implementation, where each value on stack needs a reference to the previous value, leads to many memory reads spread in memory which decreases performance and important memory footprint. 
+Initially, the stack uses a fixed-size array, called a ""stack page"". In the case of a call stack, the program knows ahead of time that the stack can underflow or overflow only during specific operations, hence it does not need to check for underflow and overflow in the general case.
 
-Here is a possible implementation. Note that the stackPointer points to top of stack (the place where a value was added or at the start). 
+When the stack page is full (stack overflow), a new stack page is allocated (with a pointer back to the previous one) and the stack keep growing there. In other words, the stack is represented as a linked list of stack pages. Most ==push== and ==pop== operations are done within a stack page, using the efficient array implementation of a stack. From time to time, ==push== and ==pop== operations requires the stack to switch to another page, in a similar way to the linked list implementation of the stack. 
+
+When popping across a stack page, the stack is no longer using the stack page where the popped value was, hence it can be freed. The stack is therefore successfully growing and shrinking, wasting at worst a stack page of memory, with low execution overhead.
+
+In fact, this implementation has both the advantages of the array implementation and linked list implementation, with little drawbacks (wasting at worst a stack page of memory and the cost of ==push== and ==pop== operations across stack pages).
+
+Even better, as the stack pages all have the same size, they can be easily reused between different stacks. A pool of stack pages can be available, and when a stack needs to allocate or free a stackpage, it can just request the pool to provide it or return it to the pool. This way, the allocation and deallocation of stack page can be really cheap.
+
+Here is a possible implementation. It does not include a pool to share stack pages, but I believe the reader understands how this is possible. Note that the stackPointer points to the top of stack, as in the array implementation. 
 
 
 [[[
@@ -207,11 +274,23 @@ StackedPageStack >> previousStackPage: previousPage
 	stackPointer := previousPage size.
 ]]]
 
-The two tests illustrate the behavior of ==StackPageStack==.
+These two tests illustrate the behavior of ==StackPageStack==.
+
+[[[
+StackPageStackTest >> testPushGrow
+		| stack |
+		stack := StackedPageStack new initializeWithSize: 3.
+		stack push: $A.
+		stack push: $B.
+		stack push: $C.
+		"here we create a new stack page and we reserve the first element 
+		to point to the previous page"
+		self assert: (stack array at: 2) = $C
+	
+]]]
 
 [[[
 StackPageStackTest >> testPopDropStackPage
-	
 		| stack res |
 		stack := StackedPageStack new initializeWithSize: 3.
 		stack push: $A.
@@ -230,27 +309,8 @@ StackPageStackTest >> testPopDropStackPage
 		self assert: stack array = #(nil $A $B).
 ]]]
 
-[[[
-StackPageStackTest >> testPushGrow
-
-		| stack |
-		stack := StackedPageStack new initializeWithSize: 3.
-		stack push: $A.
-		stack push: $B.
-		stack push: $C.
-		"here we create a new stack page and we reserve the first element 
-		to point to the previous page"
-		self assert: (stack array at: 2) = $C
-	
-]]]
-
-
-This stack representation needs only extra memory and distant memory reads to switch between stack pages, which is uncommon. Most operations are very fast, as for the fixed-sized stack. One can see this representation as an hybrid version between an array and a linked list.
-
-%figures
-
-
 ! SmiLang: A Simple Integer Language
+@SmiLang
 
 During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
 
@@ -314,6 +374,7 @@ exampleSelectors do: [ :each |
 The complete SmiLang has been introduced. This language may not be usable for a real application but it is perfect for our exercise which consists of the different implementations of function calls and returns.
 
 ! Context Interpreter
+@ContextInterpreter
 
 A context interpreter is an interpreter which represents the activation of each function call by a data structure called a context. The call stack is composed of a linked list of contexts.
 
@@ -461,14 +522,11 @@ testExample1
 		equals: 1
 ]]]
 
-
-
 Good luck and have fun. In the subsequent chapter you will develop a better interpreter. 
 
 
-
-
 ! Simple Stack Interpreter
+@StackInterpreter
 
 In this section, one has to build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
 
@@ -572,6 +630,7 @@ The ==SmiStackInterpreterTests== have to pass to proceed to the next section.
 Good luck and have fun !
 
 ! Stack pages
+@StackPages
 
 !!! Problem
 
@@ -611,6 +670,7 @@ stackPageOverflow: stackPage
 When a new stack page is required, if the current stack page has already overflowed, the interpreter decides to copy a certain number of stack frame to new page to make call and return across stack pages less common. The number of stack frame to copy depends on the number of time the stack page has overflowed and is bounded by a maximum value. This cheap strategy makes calls and returns across stack pages uncommon.
 
 ! Naive closures in the Context Interpreter
+@ClosureContextInterpreter
 
 !! Introduction
 
@@ -714,6 +774,7 @@ The SmiClosureContextInterpreterTests have to pass to proceed to the next sectio
 Good luck and have fun !
 
 ! Simplified Closures in the Stack Interpreter
+@ClosureStackInterpreter1
 
 In the two next sections you will introduce the closures in the stack interpreter.
 
@@ -782,6 +843,7 @@ The ==SmiSimplifiedClosureStackInterpreterTests== have to pass to proceed to the
 Good luck and have fun !
 
 ! Real Closures in the Stack Interpreter
+@ClosureStackInterpreter2
 
 In this section we extend the previous interpreter to support non local returns.
 
@@ -844,6 +906,7 @@ The ==SmiRealClosureStackInterpreterTests== have to pass to proceed to the next 
 Good luck and have fun !
 
 ! Discussion
+@Discussion
 
 !! What about Contexts and Stack frames in Smalltalk ?
 
