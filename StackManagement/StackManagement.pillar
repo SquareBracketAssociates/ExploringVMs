@@ -58,6 +58,12 @@ The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can con
 
 The first naive implementation is to represent a stack as a linked list. The stack keeps a reference to the top element, and each element keeps a reference to the previous element on stack, or nil if it's the bottom element.
 
+An example of such a stack, where the characters ==$A, $B and $C== were successively pushed, is represented on figure *@linkedListStack*.
+
++Linked List Stack where ==$A, $B and $C== were successively pushed.>file://figures/linkedListStack.pdf|width=58|label=linkedListStack+ 
+
+Here is possible code that could be written to implement a stack using a linked list (we omitted the getters and setters on ==StackElement==).
+
 [[[
 Object subclass: #Stack
 	instanceVariableNames: 'topElement'
@@ -92,19 +98,25 @@ Stack >> pop
 			value ]
 ]]]
 
-This is the implementation that is currently used in Pharo. 
+The stack implementation used in Pharo is very similar to this implementation. In addition, the Pharo ==Stack== has many more APIs, most of them being unconventionnal for a stack.
 
-It has the big advantage that it cannot overflow as long as there are memory available. In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
+This implementation has the big advantage that it cannot overflow (as long as there are memory available). In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
 
 It has however several big problems:
-- each element requires an indirection to keep the reference to the previous element through an instance of ==StackElement==. This implies a massive memory overhead if the stack hold small elements as ==SmallInteger== instances (each value on stack is represented in a single machine word, whereas the stack element requires an extra machine word to refer to the previous element). In addition, accessing an element of the stack requires two memory reads, one to read the instance of ==StackElement==, one to read the element itself.
+- each element requires an indirection to keep the reference to the previous element through an instance of ==StackElement==. This has two drawbacks:
+-- The memory footprint per element is increased (the stack element requires at least an extra machine word to refer to the previous element).
+-- Accessing an element of the stack requires two memory reads, one to read the instance of ==StackElement==, one to read the element itself.
 - each element can be very far in memory from the the previous element, leading to many cpu cache miss when pushing and popping elements on stack often.
 
-This implementation cannot be used directly as it is dog slow and has a significant memory overhead compared to the next implementations. However, better designs are inspired from this naive version.
+This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, better designs are inspired from this naive version.
 
 !!! Array implementation
 
 The other naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
+
+An example of such a stack, where the characters ==$A, $B and $C== were successively pushed, is represented on figure *@ArrayStack*.
+
++Array Stack where ==$A, $B and $C== were successively pushed.>file://figures/ArrayStack.pdf|width=53|label=linkedListStack+ 
 
 Here is an example of how a stack could be implemented:
 
@@ -148,16 +160,16 @@ Stack >> push: value
 
 The main drawback of this second naive implementation is that the stack can overflow if the programmer has not anticipated the maximum size that it could reach, which is sometimes very difficult to do. 
 
-Another drawback is that is the array allocated is huge and the stack uses in practice most of the time a very small portion of the array, most of the space allocated by the array is wasted.
+Another drawback is that if the array allocated is huge whereas the stack uses during most of its life time a very small portion of the array, most of the space allocated by the array is wasted.
 
 However, if the average number of elements on stack is fairly close to the maximum stack size, the memory consumption of this implementation is likely to be smaller than the previous implementation.
 
-Moreover, it does not require extra indirection to access elements, providing faster access. All the element references are next to each other in memory, hence accessing successively to several elements will likely to end up in a cpu cache hit, greatly improving the performance.
+Moreover, this implementation does not require an extra indirection to access its elements, providing faster access. All the element references are next to each other in memory, hence accessing successively to several elements will likely to end up in a cpu cache hit, greatly improving the performance.
 
 !! Advanced implementations
 
 The advanced implementation are directly inspired from the array implementation. They tackle two main problems:
-- how to handle stack overflow so that the stack can dynamically grow without wasting too much memory and execution time
+- how to handle stack overflow so that the stack can dynamically grow without wasting too much memory and execution time.
 - how to remove the stack overflow and underflow checks in the ==push:== and ==pop== operations.
 
 The next subsection discusses the case where stack overflow and underflow can't happen. The last subsection deals with dynamic growth and shrink of the stack.
@@ -228,8 +240,7 @@ In fact, this implementation has both the advantages of the array implementation
 
 Even better, as the stack pages all have the same size, they can be easily reused between different stacks. A pool of stack pages can be available, and when a stack needs to allocate or free a stackpage, it can just request the pool to provide it or return it to the pool. This way, the allocation and deallocation of stack page can be really cheap.
 
-Here is a possible implementation. It does not include a pool to share stack pages, but I believe the reader understands how this is possible. Note that the stackPointer points to the top of stack, as in the array implementation. 
-
+Here follows a possible implementation. It does not include a pool to share stack pages, but I believe the reader understands how this is possible. 
 
 [[[
 StackedPageStack >> initializeWithSize: size
@@ -273,6 +284,10 @@ StackedPageStack >> previousStackPage: previousPage
 	array := previousPage.
 	stackPointer := previousPage size.
 ]]]
+
+With stack pages of 3 elements, figure *@StackPageStack* shows a stack where the characters ==$A, $B and $C== were successively pushed.
+
++Stack Page Stack where ==$A, $B and $C== were successively pushed.>file://figures/StackPageStack.pdf|width=65|label=StackPageStack+ 
 
 These two tests illustrate the behavior of ==StackPageStack==.
 
@@ -446,14 +461,11 @@ The current stack holds the values of the 2 arguments and the spilled value 2 du
 !! Interpretation
 Now let us look at two examples of execution. 
 
-
-+Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=50|label=contextInterpretation1+ 
++Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=53|label=contextInterpretation1+ 
 
 !!! Example 1: Interpretation of ==1 + 2==
 
 Figure *@contextInterpretation1* shows the state of a context's stack at each pc during the execution of 1 + 2.
-
-
 
 - ""Step 1"": When the interpretation of 1 + 2 starts, stackPointer is at 0, 2 slots are already allocated on stack for the computation, pc is 1.
 
@@ -465,7 +477,7 @@ Figure *@contextInterpretation1* shows the state of a context's stack at each pc
 
 !!!Example 2: Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
 
-+Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=55|label=contextInterpretation2+
++Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=57|label=contextInterpretation2+
 
 The first steps of the interpretation are drawn in Figure *@contextInterpretation2*. Try to draw or imagine the next steps.
 
