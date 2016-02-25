@@ -175,6 +175,7 @@ The advanced implementation are directly inspired from the array implementation.
 The next subsection discusses the case where stack overflow and underflow can't happen. The last subsection deals with dynamic growth and shrink of the stack.
 
 !!! Fixed-sized stack
+@FixedSizedStack
 
 For this implementation, we assume that the operations performed on the stack are known in advance so the program can know for sure the maximum size of the stack that will used. Hence, a stack of the maximum expected size can be allocated to avoid stack overflows. In addition, based on a simple analysis of the operations that will be performed on the stack, the program can know before creating the stack if there will be a stack underflow or not, and raise the error before creating the stack instead of checking at each ==pop== operations.
 
@@ -423,12 +424,12 @@ Let us explain this Figure class by class.
 
 !!!! Stack.
 
-A stack is associated to each context, i.e., each function activation. A context's stack is composed by the following values. Note that the ordered is important:
+A stack is associated to each context, i.e., each function activation. A context's stack is composed by the following values, in this specific order:
 # The values of the function arguments.
 # The values of the temporary variables.
 # The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the *fixed-size stack* design described in the second section. Instead of creating a separate data structure, to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on).
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the *fixed-size stack* design described in the section *@FixedSizedStack*. Instead of creating a separate data structure, to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on).
 
 !! Concrete Example: Activation of function add:to:
 
@@ -547,7 +548,7 @@ But let us start by discussing the limits of our first naïve context interprete
 
 There are different issues to the Context Interpreter performance-wise:
 
-- Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments (hence they would stay in the caller context), then a context needs additional far memory reads to access its arguments, which is in practice even slower.
+- Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the cpu cache), it is in practice even slower.
 - A second problem is that Contexts are separate data structures and hence can be allocated by the host language, like C, far from each other. This implies that memory reads are spread in the memory and this is problematic for performance (mismatch with cpu caches). 
 - Another issue is that hardware-implemented cpu instructions like calls and returns are difficult or even impossible to use directly with contexts when in the future the developer will add a just-in-time compiler.
 
@@ -569,15 +570,15 @@ The interpreter, instead of knowing the active context, knows directly the state
 - the active function
 - the pc (program counter) being executed
 - the active frame pointer: it points to the beginning of the function activation in the native stack
-- the stack pointer, it points to the top of the native stack and the top of active stack frame (they are the same). Values will be pushed and popped there.
+- the stack pointer, it points to the top of the native stack and the top of the active stack frame (they are the same). Values will be pushed and popped there.
 
 !!! Stack frame representation
 
 In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
 - ""Temporaries"": Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
-- ""Spilled Values"": These values are pushed on top of the stack for the execution by different instructions. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
+- ""Spilled Values"": These values are pushed on top of the stack by some instructions to be consumed by one of the next instruction. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
 - ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the section).
-- ""==Function==, ==pc== and ==frame pointer=="": Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, it will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
+- ""==Function==, ==pc== and ==frame pointer=="": Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, the interpreter will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
 
 !!! Active stack frame
 
