@@ -98,6 +98,8 @@ This kernel was designed to be able to run on 64k so one can build a 16b mem man
 
 +Micro Kernel.>file://figures/MicroKernel.pdf|width=100|label=MicroKernel+
 
+Maybe we add later HashedCollection and Set if it feels too difficult to explain Dictionary at once.
+
 Discussion:
 
 --> Is a Dictionary and method dict same class a good idea ?
@@ -166,7 +168,9 @@ What is a Dictionnary ? Explain the implementation of a dictionary. The lookup i
 
 !! Runtime support
 
-... Discussed in previous sections !  
+... Discussed in previous book sections ! 
+
+Onmy Message to discuss slightly
 
 ! Exporting the Kernel
 

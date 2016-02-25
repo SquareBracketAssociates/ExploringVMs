@@ -116,7 +116,7 @@ The other naive implementation of a stack is a (fixed-sized) array and a stackPo
 
 An example of such a stack, where the characters ==$A, $B and $C== were successively pushed, is represented on figure *@ArrayStack*.
 
-+Array Stack where ==$A, $B and $C== were successively pushed.>file://figures/ArrayStack.pdf|width=53|label=linkedListStack+ 
++Array Stack where ==$A, $B and $C== were successively pushed.>file://figures/ArrayStack.pdf|width=53|label=ArrayStack+ 
 
 Here is an example of how a stack could be implemented:
 
