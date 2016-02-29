@@ -234,6 +234,7 @@ Firstly, the stack grows but never shrinks, leading to huge memory footprint in 
 Secondly, the array used for the internal representation of the stack has a different size depending on the size the stack had when it overflowed the last time. Hence, it is likely that once the stack has grown, the previous array used will need to be garbage collected and can't be directly reused by another instance of stack which would need an array of the same size.
 
 !!! Stack pages stack
+@StackPageStack
 
 This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in section *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there. 
 
@@ -560,6 +561,7 @@ In this exercise, you will build a context Interpreter.
 Open a Pharo image, load the package ""SmiLang"" you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
 
 You can use the following repository description:
+
 [[[
 MCSmalltalkhubRepository
 	owner: 'ClementBera'
@@ -572,10 +574,9 @@ The package SmiLang contains several tags each one grouping the classes correspo
 
 For now let us focus on the context interpreter and its companion test class ==SmiContextInterpreterTests==. A class ==SmiContext== is given as a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). You will have to define them. 
 
-
 The interpretation starts with a fake Context which holds flags. The interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, specifies the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
 
-The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. We suggest to look at the code and the compiled version of the examples. 
+The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. We suggest to look at the code and the compiled version of the examples.
 
 Here is the code of the first test, where you see the definition and instructions of the method 
 under test and the actual test.
@@ -584,8 +585,7 @@ under test and the actual test.
 stream << (SmiContextInterpreterTest>>#testExample1) sourceCode asPillarSourceCode.
 ]]]
 
-Good luck and have fun. In the subsequent chapter you will develop a better interpreter. 
-
+Good luck and have fun. In the next chapter you will implement an interpreter using a native stack. 
 
 ! Simple Stack Interpreter
 @StackInterpreter
@@ -694,27 +694,29 @@ Good luck and have fun !
 ! Stack pages
 @StackPages
 
-!!! Problem
+!! Problem
 
-The Stack interpreter previously built is nice but it has a critical flaw. It considers the stack to be infinite. This is not possible as you need to specify to the computer a size to allocate for the stack. This size can’t be too big because if the program uses multiple processes, each process requires a separate stack. 
+The Stack interpreter built in the previous chapter is very nice as it intruced many concepts. It has however a critical flaw: the stack is considered as infinite. An infinite stack is possible theoretically but not in practice as you need to specify to the computer a size to allocate for the stack. This size can’t be too big because if the program uses multiple processes, each process requires a separate stack. 
 
-!!! Solution
+!! Solution
 
-A common solution is to split the stack into stack pages of limited size. When the bottom of a stack page is reached, the interpreter switch to a new stack page. The stack pages are created at interpreter start-up and there are of  limited number. Once all the pages are full, different strategies exist depending on the language you want to implement:
+A common solution is to split the stack into stack pages of limited fixed size, as described in the section *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuse the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
 - Raise a StackOverflow error.
 - Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
+
+When a new stack frame is created, using the ==maxStackSize== field of the function allocated, the interpreter can predict if the stack page will overflow or not during the execution of the method. If this is the case, the interpreter switches to a new stack page. There is no such thing as a stack frame split between two pages. With this strategy, the interpreter needs to check for stack page overflow only at stack frame creation time and not at every ==push== operation. Based on the same idea, the interpreter needs to check for stack page underflow only at function return time and not at each ==pop== operation.
 
 !!! Implementation
 
 The implementation is as follow:
-# ""Function Activation"": In addition to what is done in the ==StackInterpreter==, the interpreter estimates the stack frame size based on the max stack size field of the function. If there is not enough room in the stack page for the next stack frame, the interpreter switches to a new stack page.
-# ""Return"": In addition to the ==StackInterpreter== behavior, if at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page can be marked (for example, the saved pc can be saved as a negative value) so the interpreter knows it has to do a return across stack pages.
+# ""Function Activation"": In addition to what is done in the ==StackInterpreter==, the interpreter estimates the stack frame size based on the ==maxStackSize== field of the function to activate. If there is not enough room in the stack page for the next stack frame, the interpreter switches to a new stack page.
+# ""Return"": In addition to the ==StackInterpreter== behavior, if the stack frame returning is at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page can be marked (for example, the saved pc can be saved as a negative value) so the interpreter knows it has to do a return across stack pages.
 
-!!! Exercise
+!! Exercise
 
-As an exercise, have the ==SmiStackInterpreterWithStackPagesTests== pass by implementing the ==SmiStackInterpreterWithStackPages==.
+As an exercise, have the ==SmiStackInterpreterWithStackPagesTests== pass by implementing the ==SmiStackInterpreterWithStackPages==. You only need to reimplement function calls and returns to fit the new behavior described in the previous subsection.
 
-!!! Making Calls and Returns across Stack Pages Uncommon
+!! Making Calls and Returns across Stack Pages Uncommon
 
 A good ==StackInterpreter== needs to be implemented in a way that returns and calls across stack pages are uncommon because they are slower than regular calls and returns. Typically, in the case of recursive fibonnacci, it could be that most of the sends are done across stack pages and the system become dog slow.
 
@@ -722,11 +724,11 @@ To avoid this problem, a good stack interpreter keeps a reference to the last st
 
 [[[
 stackPageOverflow: stackPage
-    lastStackPageThatOverflowed = stackPage
-        ifTrue: [ numOverflow := numOverflow + 1 ]
-        ifFalse: [ 
-            lastStackPageThatOverflowed := stackPage.
-            numOverflow := 1 ]
+	lastStackPageThatOverflowed = stackPage
+		ifTrue: [ numOverflow := numOverflow + 1 ]
+		ifFalse: [
+			lastStackPageThatOverflowed := stackPage.
+			numOverflow := 1 ]
 ]]]
 
 When a new stack page is required, if the current stack page has already overflowed, the interpreter decides to copy a certain number of stack frame to new page to make call and return across stack pages less common. The number of stack frame to copy depends on the number of time the stack page has overflowed and is bounded by a maximum value. This cheap strategy makes calls and returns across stack pages uncommon.
