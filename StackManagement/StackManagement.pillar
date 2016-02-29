@@ -28,6 +28,8 @@ Readers will learn the following concepts during this tutorial:
 
 !!!! Outline
 
+""That needs to be generated somehow. Not up to date.""
+
 This tutorial is divided in several chapters:
 #	Description of the SmiLang language
 #	Implementation of a simple context interpreter
@@ -38,15 +40,15 @@ This tutorial is divided in several chapters:
 #	Discussion: what are the difference between the Smalltalk model and the SmiLang model
 
 !!!! Thanks
-Thanks to Cyril Ferlicot and Vincent Blondeau for the early reviews and runs of the tutorial.
-
+Thanks to Cyril Ferlicot and Vincent Blondeau for the very early reviews and runs of the tutorial.
+Thanks to Christophe Demarey and Stéphane Ducasse for the early reviews and runs of the tutorial.
 
 ! Theory: Stack Implementation
 @StackImplementation
 
-This section describes how to implement efficiently a stack. This discussion is theoretical and does not not deal directly with call stack management. However, efficient call stack management relies on efficient stack implementations, hence it's a direct application of what is described in this section. In fact, in the different interpreter, we will refer to this section to explain which stack implementation was chosen and why it seemed to be the best performance-wise.
+This section describes how to implement efficiently a stack. This discussion is theoretical and does not not deal directly with call stack management. However, efficient call stack management relies on efficient stack implementations, hence call stack management is a direct application of what is described in this chapter. In fact, while explaining the different interpreters, the book refers to this chapter to detail which stack implementation was chosen for which part of the call stack and why it seemed to be the best performance-wise.
 
-Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following subsections. There is not such a thing as a very efficient *generic* stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
+Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following subsections. There is not such a thing as a very efficient ''generic'' stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
 
 In high-level languages such as Pharo, people usually use ==OrderedCollection== to represent different more restrictive data structures such as stacks or queues. Hence, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
 
@@ -82,7 +84,7 @@ Object subclass: #StackElement
 [[[	
 Stack >> push: value
 	topElement := StackElement new
-	    previousElement: topElement;
+		previousElement: topElement;
 		element: value;
 		yourself.
 	^ value
@@ -91,15 +93,15 @@ Stack >> push: value
 [[[	
 Stack >> pop
 	^ topElement 
-	    ifNil: [ self error: 'stack underflow' ]
+		ifNil: [ self error: 'stack underflow' ]
 		ifNotNil: [ 
-		    | value |
+			| value |
 			value := topElement element.
 			topElement := topElement previousElement.
 			value ]
 ]]]
 
-The stack implementation used in Pharo is very similar to this implementation. In addition, the Pharo ==Stack== has many more APIs, most of them being unconventionnal for a stack.
+The stack implementation used in Pharo is very similar to this implementation. However, the Pharo ==Stack== has many more APIs, most of them being unconventionnal for a stack.
 
 This implementation has the big advantage that it cannot overflow (as long as there are memory available). In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
 
@@ -109,12 +111,12 @@ It has however several big problems:
 -- Accessing an element of the stack requires two memory reads, one to read the instance of ==StackElement==, one to read the element itself.
 - each element can be very far in memory from the the previous element, leading to many cpu cache miss when pushing and popping elements on stack often.
 
-This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, better designs are inspired from this naive version.
+This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, this design inspired better design as described in the following sections.
 
 !!! Array implementation
 @arrayImplStack
 
-The other naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
+The other naive implementation of a stack is composed of a fixed-sized array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
 
 An example of such a stack, where the characters ==$A, $B and $C== were successively pushed, is represented on figure *@ArrayStack*.
 
@@ -146,6 +148,12 @@ Stack >> initializeWithSize: size
 ]]]
 
 [[[
+Stack >> push: value
+	stackPointer >= array size ifTrue: [ self error: 'stack overflow' ].
+	^ array at: (stackPointer := stackPointer + 1) put: value
+]]]
+
+[[[
 Stack >> pop
 	| top |
 	stackPointer <= 0 ifTrue: [ self error: 'stack underflow' ].
@@ -154,34 +162,35 @@ Stack >> pop
 	^ top
 ]]]
 
-[[[
-Stack >> push: value
-	stackPointer >= array size ifTrue: [ self error: 'stack overflow' ].
-	^ array at: (stackPointer := stackPointer + 1) put: value
-]]]
+This second naive implementation have two main drawbacks:
+- The stack can overflow if the programmer has not anticipated the maximum size the size can have in its lifetime, which is sometimes very difficult to anticipate.
+- If the array allocated for the stack is huge whereas the stack uses during most of its lifetime only a very small portion of the array, most of the space allocated for the stack is wasted.
 
-The main drawback of this second naive implementation is that the stack can overflow if the programmer has not anticipated the maximum size that it could reach, which is sometimes very difficult to do. 
-
-Another drawback is that if the array allocated is huge whereas the stack uses during most of its life time a very small portion of the array, most of the space allocated by the array is wasted.
-
-However, if the average number of elements on stack is fairly close to the maximum stack size, the memory consumption of this implementation is likely to be smaller than the previous implementation.
-
-Moreover, this implementation does not require an extra indirection to access its elements, providing faster access. All the element references are next to each other in memory, hence accessing successively to several elements will likely to end up in a cpu cache hit, greatly improving the performance.
+This implementation has advantages over the linked list implementation:
+- If the average number of elements on stack is fairly close to the maximum stack size during most of the stack lifetime, then the memory consumption of this implementation is smaller than the previous implementation.
+- The stack does not require an extra indirection to access its elements, providing faster access. All the element references are next to each other in memory, hence accessing successively to several elements usually ends up in cpu cache hits, greatly improving the performance.
 
 !! Advanced implementations
 
 The advanced implementation are directly inspired from the array implementation. They tackle two main problems:
 - how to handle stack overflow so that the stack can dynamically grow without wasting too much memory and execution time.
-- how to remove the stack overflow and underflow checks in the ==push:== and ==pop== operations.
+- how to remove the stack overflow and underflow checks in the ==push== and ==pop== operations to improve their performance.
 
-The next subsection discusses the case where stack overflow and underflow can't happen. The last subsection deals with dynamic growth and shrink of the stack.
+The next subsection discusses the case where stack overflow and underflow can't happen. The last two subsections deal with dynamic growth and shrink of the stack.
 
 !!! Fixed-sized stack
 @FixedSizedStack
 
-For this implementation, we assume that the operations performed on the stack are known in advance so the program can know for sure the maximum size of the stack that will used. Hence, a stack of the maximum expected size can be allocated to avoid stack overflows. In addition, based on a simple analysis of the operations that will be performed on the stack, the program can know before creating the stack if there will be a stack underflow or not, and raise the error before creating the stack instead of checking at each ==pop== operations.
+For this implementation, we assume that the operations performed on the stack are known in advance so the program can know for sure the maximum size of the stack that will used. Hence, an array of the maximum expected size can be allocated to avoid stack overflows. 
+
+Based on a simple analysis of the operations that will be performed on the stack, the program can also know before creating the stack if there will be a stack underflow or not, and raise an error before creating the stack if this is the case instead of checking at each ==pop== operations.
 
 The stack code or the array implementation can be simplified to remove the stack underflow and overflow checks.
+
+[[[
+Stack >> push: value
+	^ array at: (stackPointer := stackPointer + 1) put: value
+]]]
 
 [[[
 Stack >> pop
@@ -191,14 +200,9 @@ Stack >> pop
 	^ top
 ]]]
 
-[[[
-Stack >> push: value
-	^ array at: (stackPointer := stackPointer + 1) put: value
-]]]
-
 Growing the stack is useless in this implementation as the stack can't overflow.
 
-This implementation is likely the most efficient possible (modulo some micro machine specific optimizations). However, using it implies knowing in advance if the maximum size the stack can have and ensuring it won't underflow.
+This implementation is the most efficient possible (modulo some machine specific optimizations). However, it has some strong constraints such as anticipating the maximum size of the stack sor it cannot be used in all the cases where the programmer needs a stack.
 
 In the next subsection, this implementation of the stack will be referred as the ""fixed-sized stack"".
 
@@ -221,13 +225,13 @@ Stack >> growStack
 	array := newArray.
 ]]]
 
-Once the stack has grown, it can push new elements until it overflows again and then grow again.
+Once the stack has grown, it can push new elements until it overflows again (then it grows again, etc.).
 
 This approach is reasonable but not good enough in our case. There are several problems. 
 
 Firstly, the stack grows but never shrinks, leading to huge memory footprint in some cases. Adding support for stack shrinking is difficult to do without decreasing the performance of ==pop== (it would need an extra check in addition of the stack underflow check). 
 
-Secondly, the data structure used by the stack, the array has a different size depending on the size the stack had when it overflowed. Hence, it is likely that once the stack has grown, the previous array used will need to be garbage collected and can't be directly reused by another instance of stack which would need an array of the same size.
+Secondly, the array used for the internal representation of the stack has a different size depending on the size the stack had when it overflowed the last time. Hence, it is likely that once the stack has grown, the previous array used will need to be garbage collected and can't be directly reused by another instance of stack which would need an array of the same size.
 
 !!! Stack pages stack
 
@@ -408,9 +412,9 @@ The Smi language has 7 instructions:
 
 exampleSelectors := #(#one #add:to: #example07TempAndCallAndCallArgs).
 selectorTexts := {
-	#one -> 'zero argument function which returns the constant Smi 1' .
+	#one -> 'zero argument function which returns the constant Smi ==1==. The operator ==^== is used to represent a function return, followed by the value to return' .
 	#add:to: -> '2 argument function which adds the values of the 2 arguments and returns it' .
-	#example07TempAndCallAndCallArgs -> 'zero argument function with two static function calls. It also uses a temporary variable'
+	#example07TempAndCallAndCallArgs -> 'zero argument function with two static function calls to the functions named ==one== and ==add:to:==. Each call is written using the keyword ==call== followed by the keywords of the function named to call separated by the arguments values. The function also uses a temporary variable, named ==t== and declared at the beginning of the function with ==| t |==. The operator ==:= ==is used to represent an assignment'
 	} asDictionary.
 	
 stream << 'Here are '.
@@ -468,14 +472,14 @@ Let us explain this Figure class by class.
 !!!! Context.
 - The ==sender== field of the context references another context, the one which activated it. Such context chain is created during function call: the sender context has temporarily stopped its execution just after the function call that activated the described context.
 - The ==program counter== field holds 3, which means the next instruction the interpreter will execute is the third instruction of the function.
-- The ==function== field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed. 
+- The ==function== field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed.
 - The ==stack pointer== field holds 6, which means that in the space allocated for this specific context stack, which is in our case 7, only 6 values are currently used and the value at position 6 is the top of the stack.
 - Lastly, the ==stack== field references the stack. The context’s stack values are specific to the function activation and independent from other contexts. The values are unrelated to other function activations.
 
 !!!! Function.
 - The field ==name== is useful for debugging purpose.
 - The fields ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the section).
-- ==maxStackSize== . For performance reason, the context, on creation, allocates for its stack enough space for the maximum size that its stack can take during the function execution. This maximum size is specified by the compiler. In Figure *@context1* the field ==maxStackSize== holds 7. 
+- ==maxStackSize== . For performance reason, the context, on creation, allocates for its stack enough space for the maximum size that its stack can take during the function execution. This maximum size is specified by the compiler. In Figure *@context1* the field ==maxStackSize== holds 7.
 
 !!!! Stack.
 
@@ -484,7 +488,7 @@ A stack is associated to each context, i.e., each function activation. A context
 # The values of the temporary variables.
 # The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the *fixed-size stack* design described in the section *@FixedSizedStack*. Instead of creating a separate data structure, to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on).
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the section *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal array and the stack pointer), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
 
 !! Concrete Example: Activation of function add:to:
 
@@ -987,7 +991,7 @@ You can now look into the ==Context== class in Pharo and verify that you underst
 
 !! Correction
 
-In the repository *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*, one can find a package named SmiLang-Correction. It includes a *possible* implementation for each interpreter. 
+In the repository *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*, one can find a package named SmiLang-Correction. It includes a ''possible'' implementation for each interpreter. 
 
 
 
