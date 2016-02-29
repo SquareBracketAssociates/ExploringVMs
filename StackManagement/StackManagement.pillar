@@ -55,6 +55,7 @@ The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can con
 !! Naive Implementations
 
 !!! Linked List implementation
+@LLStack
 
 The first naive implementation is to represent a stack as a linked list. The stack keeps a reference to the top element, and each element keeps a reference to the previous element on stack, or nil if it's the bottom element.
 
@@ -111,6 +112,7 @@ It has however several big problems:
 This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, better designs are inspired from this naive version.
 
 !!! Array implementation
+@arrayImplStack
 
 The other naive implementation of a stack is a (fixed-sized) array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
 
@@ -229,19 +231,36 @@ Secondly, the data structure used by the stack, the array has a different size d
 
 !!! Stack pages stack
 
-This is the stack implementation usually used for most call stacks.
+This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in section *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there. 
 
-Initially, the stack uses a fixed-size array, called a ""stack page"". In the case of a call stack, the program knows ahead of time that the stack can underflow or overflow only during specific operations, hence it does not need to check for underflow and overflow in the general case.
+In other words, the stack is represented as a linked list of stack pages. Most ==push== and ==pop== operations are done within a stack page so they are very efficient. From time to time, ==push== and ==pop== operations requires the stack to switch to another page, in a similar way to the linked list implementation of the stack discussed in section *@LLStack*, which is less efficient but uncommon. 
 
-When the stack page is full (stack overflow), a new stack page is allocated (with a pointer back to the previous one) and the stack keep growing there. In other words, the stack is represented as a linked list of stack pages. Most ==push== and ==pop== operations are done within a stack page, using the efficient array implementation of a stack. From time to time, ==push== and ==pop== operations requires the stack to switch to another page, in a similar way to the linked list implementation of the stack. 
+When a pop operation implies that the top of the stack is back on the previous stack page, the stack no longer uses the stack page where the popped value was, hence it can be freed. The stack is therefore successfully growing and shrinking, wasting at worst a stack page of memory, with low execution overhead.
 
-When popping across a stack page, the stack is no longer using the stack page where the popped value was, hence it can be freed. The stack is therefore successfully growing and shrinking, wasting at worst a stack page of memory, with low execution overhead.
+In fact, this implementation has both the advantages of the array implementation and linked list implementation, with very little drawbacks:
+- wasting at worst a stack page of memory (still better that naive implementation in most cases).
+- sometimes, a ==push== and ==pop== operations needs to switch to another stack page which is slow.
 
-In fact, this implementation has both the advantages of the array implementation and linked list implementation, with little drawbacks (wasting at worst a stack page of memory and the cost of ==push== and ==pop== operations across stack pages).
+Here follows a possible implementation.
 
-Even better, as the stack pages all have the same size, they can be easily reused between different stacks. A pool of stack pages can be available, and when a stack needs to allocate or free a stackpage, it can just request the pool to provide it or return it to the pool. This way, the allocation and deallocation of stack page can be really cheap.
+""Stack initialization:""
 
-Here follows a possible implementation. It does not include a pool to share stack pages, but I believe the reader understands how this is possible. 
+[[[
+Object subclass: #StackedPageStack
+	instanceVariableNames: 'array stackPointer'
+	classVariableNames: ''
+	package: 'Collection-Stack'
+]]]
+
+[[[	
+StackedPageStack class >> new
+	^ self new: 10
+]]]
+
+[[[	
+StackedPageStack class >> new: size
+	^ self basicNew initializeWithSize: size
+]]]
 
 [[[
 StackedPageStack >> initializeWithSize: size
@@ -249,19 +268,7 @@ StackedPageStack >> initializeWithSize: size
 	stackPointer := 1.
 ]]]
 
-[[[
-StackedPageStack >> pop
-	| top |
-	stackPointer <= 1 ifTrue: [ 
-		"The first value of each stack page is nil for the first 
-		stack page else a reference to the previous stack page."
-		(array at: stackPointer)
-			ifNil: [ self error: 'stack underflow']
-			ifNotNil: [ :previousPage | self previousStackPage: previousPage ] ].
-	top := array at: stackPointer.
-	stackPointer := stackPointer - 1.
-	^ top
-]]]
+""Push operation:""
 
 [[[
 StackedPageStack >> push: value
@@ -280,50 +287,98 @@ StackedPageStack >> nextStackPage
 	stackPointer := 1.
 ]]]
 
+""Pop operation:""
+
+[[[
+StackedPageStack >> pop
+	| top |
+	top := array at: stackPointer.
+	stackPointer <= 1 ifTrue: [ ^ self fixStackPageForPop ].
+	stackPointer := stackPointer - 1.
+	^ top
+]]]
+
+[[[
+StackedPageStack >> fixStackPageForPop
+	"The first value of each stack page is nil for the first 
+	stack page else a reference to the previous stack page."
+	(array at: stackPointer)
+		ifNil: [ self error: 'stack underflow']
+		ifNotNil: [ :previousPage | self previousStackPage: previousPage ]
+]]]
+
 [[[	
 StackedPageStack >> previousStackPage: previousPage
 	array := previousPage.
 	stackPointer := previousPage size.
 ]]]
 
-With stack pages of 3 elements, figure *@StackPageStack* shows a stack where the characters ==$A, $B and $C== were successively pushed.
+!!!! Example
 
-+Stack Page Stack where ==$A, $B and $C== were successively pushed.>file://figures/StackPageStack.pdf|width=65|label=StackPageStack+ 
+This subsection shows some Smalltalk code pushing and popping elements on a stack implemented with stack pages aside from the memory representation of the stack. The following 6 points refer to the numbers shown on figure *@stackpageEx1* and figure *@stackpageEx2*.
 
-These two tests illustrate the behavior of ==StackPageStack==.
++Example of successive operations on a stack with stack pages.>file://figures/stackpageEx1.pdf|width=85|label=stackpageEx1+ 
 
-[[[
-StackPageStackTest >> testPushGrow
-		| stack |
-		stack := StackedPageStack new initializeWithSize: 3.
-		stack push: $A.
-		stack push: $B.
-		stack push: $C.
-		"here we create a new stack page and we reserve the first element 
-		to point to the previous page"
-		self assert: (stack array at: 2) = $C
-	
-]]]
+# The stack is created and initialized with a first stack page of size 5. We push on stack successively ==$A==, ==$B== and ==$C==. Once done, the stack pointer holds 4 so the top of the stack refers to ==#C== as expected. The first field of the array is ==nil== to mark that this array is the first stack page so stack underflow can be detected.
+# ==$D== is pushed on stack. As there is enough room on the stack page to hold ==$D==, it is pushed on stack as the naive array implementation described in section *@arrayImplStack*.
+# ==$E== is pushed on stack. There is not enough room on the stack page for ==$E==. Hence, a new stack page is allocated for the stack. The first field of new stack page refers to the previous page so the stack will be able to pop values back to the values on the first page. ==$E== is pushed on the new page.
+# ==$F== is pushed on stack. As there is enough room on the stack page for ==$F==, it is pushed on stack as the naive array implementation described in section *@arrayImplStack*.
+# The value ==$F== is popped from the stack. After popping, there is still a value on the stack page, hence the pop operation is done as the naive array implementation described in section *@arrayImplStack*.
+# The value ==$E== is popped from the stack. This time, after popping, there are no more values on the stack page. Hence, the stack page is freed. The first value of the page is used to change the reference of the stack page (==array== field) in the stack to the previous stack page. The stack pointer is updated so the top of the stack is the top of the previous stack page.
 
-[[[
-StackPageStackTest >> testPopDropStackPage
-		| stack res |
-		stack := StackedPageStack new initializeWithSize: 3.
-		stack push: $A.
-		stack push: $B.
-		"current stack page is full. nil | A | B"
-		stack push: $C.
-		self assert: stack stackPointer = 2.
-		"a stack page has been created. (nil | A | B)| C | nil"
-		res := stack pop.
-		self assert: res = $C.
-		self assert: stack stackPointer = 1.
-		res := stack pop. 
-		"here we drop the page"
-		self assert: res = $B.
-		self assert: stack stackPointer = 2.
-		self assert: stack array = #(nil $A $B).
-]]]
++Example of successive operations on a stack with stack pages.>file://figures/stackpageEx2.pdf|width=85|label=stackpageEx2+ 
+
+In this naive Example, stack pages of size 5 were used. It implies that 4 out of 5 ==push== and ==pop== operations are very efficient because they are done within a stack page, and 1 out of 5 operation is less efficient because it needs to handle the stack page switch. At worst, the stack wastes a stack page of memory, 3 fields in this case, if the last stack page is almost empty as in step 3. In addition, there are some memory overhead due each stack page needing to keep a reference to the previous stack page or ==nil==. 
+
+In practice, the stack page used are far bigger (usually a few kilobytes), so the overhead of the reference to the previous stack page or ==nil== is negligible, and the stack wastes at worst a few kilobytes of memory if the last page is almost unused.
+
+!!!! Discussion
+
+""Uncommon stack page switch""
+
+The main remaining drawback of this implementation in term of performance is the stack page switch. More precisely, it can happen for a specific stack that once initialized with enough values to fill a stack page, all its operations push one value on stack and pop it multiple times, in a way that all the ==pop== and ==push== operations for this specific stack are done across stack pages. This case is usually handled with extra heuristics based on the running program. It will be discussed later in this part of the book in the context of call stack management.
+
+""Unchecked pop and push operations""
+
+In the case of a call stack, the program knows ahead of time that the stack can underflow or overflow only during specific operations (function returns and function calls), hence it does not need to check for stack page underflow and overflow all the time. In fact, most ==push== and ==pop== operations are done within a stack page without checking if it is required to switch to another stack page, as in the fixed-sized stack implementation described in *@FixedSizedStack*.
+
+""Reusing the stack pages""
+
+Assuming that the program uses several stacks that all use stack pages of the same size, all the stack pages used in the program have always the same size so they can be easily reused. A pool of stack pages is then available, and when a stack needs to allocate or free a stackpage, it can just request the pool to provide a page or return a page to the pool. This way, the allocation and deallocation of stack pages can be really cheap.
+
+%These two tests illustrate the behavior of ==StackPageStack==.
+
+%[[[
+%StackPageStackTest >> testPushGrow
+%		| stack |
+%		stack := StackedPageStack new initializeWithSize: 3.
+%		stack push: $A.
+%		stack push: $B.
+%		stack push: $C.
+%		"here we create a new stack page and we reserve the first element 
+%		to point to the previous page"
+%		self assert: (stack array at: 2) = $C
+%]]]
+
+%[[[
+%StackPageStackTest >> testPopDropStackPage
+%		| stack res |
+%		stack := StackedPageStack new initializeWithSize: 3.
+%		stack push: $A.
+%		stack push: $B.
+%		"current stack page is full. nil | A | B"
+%		stack push: $C.
+%		self assert: stack stackPointer = 2.
+%		"a stack page has been created. (nil | A | B)| C | nil"
+%		res := stack pop.
+%		self assert: res = $C.
+%		self assert: stack stackPointer = 1.
+%		res := stack pop. 
+%		"here we drop the page"
+%		self assert: res = $B.
+%		self assert: stack stackPointer = 2.
+%		self assert: stack array = #(nil $A $B).
+%]]]
 
 ! SmiLang: A Simple Integer Language
 @SmiLang
@@ -521,18 +576,8 @@ The class ==SmiContextInterpreterTests== defines a set of tests that have to pas
 Here is the code of the first test, where you see the definition and instructions of the method 
 under test and the actual test.
 
-[[[
-testExample1
-	"This test ensures that the execution of the function example01Return is correct.
-	-- Source code --
-	example01Return
-	^ 1
-	-- Instructions --
-	<1> push 1
-	<2> returnTop"
-	self
-		assert: (self runSmiFunction: (self compilePharoMethod: SmiExamples>>#example01Return))
-		equals: 1
+[[[eval=true
+stream << (SmiContextInterpreterTest>>#testExample1) sourceCode asPillarSourceCode.
 ]]]
 
 Good luck and have fun. In the subsequent chapter you will develop a better interpreter. 

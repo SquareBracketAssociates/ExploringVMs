@@ -21,7 +21,7 @@ In this theoretical section, the representation in memory of objects is discusse
 
 The memory representation presented is the one you will implement for your language. Once you have understood it, you will be able to rethink it and maybe change your implementation.
 
-! Head first: Mapping an object to raw bytes
+!! Head first: Mapping an object to raw bytes
 
 Let's create an object, look at the raw bytes in memory corresponding to the object and understand what they mean.
 
@@ -77,7 +77,21 @@ representation of integers ...
 
 Endianness example => where is the format where is the hash.
 
-Then go to bytearray & array
+We've seen most objects, iv ones, not what about collection ?
+
+!! Variable-sized objects
+
+bytearray & array
+
+!! Discussion: other kind of objects ?
+
+not in this micro kernel
+
+as byteArray, multiple byte array can be used
+
+Weak structures for ex for caching
+
+More compact structure: iv and variable and bytes, more compact compiled method, more efficient to interpret.
 
 ! Designing a 30 classes Kernel
 
@@ -133,9 +147,17 @@ How is ifTrue:ifFalse: implemented conceptually and practically ? If you don’t
 
 !! UndefinedObject
 
-initialization of objects
+==UndefinedObject== has a unique instance called ==nil==. This object is used to describe a null state. For example, when an object is created, all its fields reference nil. 
 
-What is it and why. Only ifNil: ifNotNil:  not to pollute its API.
+primitive with no answer ?
+
+Default state. Only ifNil: ifNotNil:  not to pollute its API.
+
+!! SmalltalkImage
+
+globals
+
+specialObjectArray: what are in it and why ?
 
 !! Magnitudes
 
@@ -174,9 +196,23 @@ Onmy Message to discuss slightly
 
 ! Exporting the Kernel
 
+generic idea...
+
 Building the first snapshot.
 
 Addresses are relative to beginning of snapshot.
+
+!! Exporting compiled method
+
+cross compilation
+
+!! Exporting classes
+
+special object array
+
+!! Exporting tables
+
+Character and symbol table
 
 ! Rethinking the Memory representation
 
@@ -205,7 +241,7 @@ Let's take a simple example. In a specific virtual machine, one wants to have fo
 
 As these information can fit in 32 bits, the programmer will fit them in a single 32 bit word not to waste any memory (compactness is the first point of evaluation). Now, how will the programmer design its object header ?
 
-Here is an example (still big endian)
+Here is an example (still big endian ?)
 [22 bits hash][8 bits object format][2 bits GC]
 
 discuss byte access, two byte access, word access etc. 
@@ -226,7 +262,7 @@ Estimation of the cost per read:
 
 Design is way better because faster object format while other instructions are as fast.
 
-at: and at:put: nd size perf difference is huge between those 2 representation, and they are performance critical primitives.
+at: and at:put: and size perf difference is huge between those 2 representation, and they are performance critical primitives.
 
 !!! Features
 
