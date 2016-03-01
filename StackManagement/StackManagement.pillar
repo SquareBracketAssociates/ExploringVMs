@@ -25,7 +25,6 @@ Readers will learn the following concepts during this tutorial:
 -- Remote temporary variable access
 -- Non-local returns
 
-
 !!!! Outline
 
 ""That needs to be generated somehow. Not up to date.""
@@ -592,18 +591,14 @@ Good luck and have fun. In the next chapter you will implement an interpreter us
 
 In this section, one has to build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
 
-The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". In subsequent implementation we will deal with limited memory stack using stack pages. 
-But let us start by discussing the limits of our first naïve context interpreter.
-
-There are different issues to the Context Interpreter performance-wise:
-
+The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". The next chapter of the book explains how to handle a finite stack. The context interpreter, as implemented in the previous chapter, has several issues:
 - Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the cpu cache), it is in practice even slower.
 - A second problem is that Contexts are separate data structures and hence can be allocated by the host language, like C, far from each other. This implies that memory reads are spread in the memory and this is problematic for performance (mismatch with cpu caches). 
 - Another issue is that hardware-implemented cpu instructions like calls and returns are difficult or even impossible to use directly with contexts when in the future the developer will add a just-in-time compiler.
 
 !! Call Stack
 
-In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack".
+In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack". As the stack is infinite and the first stack frame is tagged to mark the beginning of the stack, the interpreter does not need to check for stack underflow or overflow anywhere. The implementation of the stack is the fixed-array stack described in *@FixedSizedStack*, with an array that has conceptually an infinite size and in practice a size bigger that what the interpreter needs in the worst case. The interpreter will hold directly references to the stack pointer and the array holding the stack entries.
 
 !!! Call stack representation
 
@@ -616,9 +611,9 @@ The native stack holds information relative to each context next to each other. 
 !!! Interpreter state
 
 The interpreter, instead of knowing the active context, knows directly the state of the active function activation: 
-- the active function
-- the pc (program counter) being executed
-- the active frame pointer: it points to the beginning of the function activation in the native stack
+- the active function.
+- the pc (program counter) being executed.
+- the active frame pointer: it points to the beginning of the function activation in the native stack.
 - the stack pointer, it points to the top of the native stack and the top of the active stack frame (they are the same). Values will be pushed and popped there.
 
 !!! Stack frame representation
@@ -644,10 +639,10 @@ stream << (SmiExamples>>#add:to:) sourceCode asPillarSourceCode.
 +Example of a native stack.>file://figures/stack2.pdf|width=75|label=stack2+
 
 The interpreter holds:
-- A reference to the function being executed, the function ==add:to:==
-- The pc of the next instruction to execute, 2
-- The frame pointer corresponding to the beginning of the current stack frame for the activation of the method ==add:to:==
-- The stack pointer, which is the last value being used on stack and the top of the active stack frame
+- A reference to the function being executed, the function ==add:to:==.
+- The pc of the next instruction to execute, 2.
+- The frame pointer corresponding to the beginning of the current stack frame for the activation of the method ==add:to:==.
+- The stack pointer, which is the last value being used on stack and the top of the active stack frame.
 
 The active stack frame starts with a framePointer which refers to the framePointer of the previous stack frame, i.e., the beginning of the previous stack frame. For example, in figure *@stack2* the interpreter frame pointer points to slot 9 which refers to the previous stack frame start.
 
@@ -974,34 +969,48 @@ Good luck and have fun !
 
 !! What about Contexts and Stack frames in Smalltalk ?
 
-In Smalltalk, from the language, the programmer has the impression that a context interpreter is running. This is convenient as the programmer can manipulate the contexts as objects. This feature is used for the implementation of the debugger, exceptions and continuations.
+In Smalltalk, from the language, the programmer has the impression that a context interpreter is running. This is convenient as the programmer can manipulate the contexts as any other objects. This feature is used for the implementation of the debugger, exceptions and continuations.
 
 In the VM, the interpreter is implemented as a stack interpreter for performance. Stack frames are mapped to contexts on demand.
 
-Assuming the programmer request to read or write one of the following field into a context, whereas the VM only holds an empty proxy to a stack frame, how do you expect the VM to read or write:
-- Any of the stack values (arguments, temporaries, spilled values) ?
-- The program counter and the function ?
-- The sender (tip: to write into the sender field you can abuse calls and returns across stack pages)
+!! Context-to-Stack Mapping
+
+The mapping from stack frames to context on demand is usually referred as the ""Context-to-Stack Mapping"". Imagine that on all your interpreter, in addition to the public API ==interpreter:==, another API called ==currentContext== would be available. In the case of the context interpreters, the method currentContext would be implemented as a getter:
+
+[[[
+SmiContextInterpreter >> currentContext
+	^ currentContext
+]]]
+
+However, in the case of the stack interpreter, the interpreter needs to recreate a context from its state and the state of the stack. All the information the context needs is available:
+- The temporaries and spilled values are available on the active stack frame. 
+- The arguments are vailable on the previous stack frame.
+- The program counter and the function are available directly in the interpreter variables for the active stack frame, or on stack for the other stack frames.
+- The sender can be ''lazily'' recreated from the previous stack frame.
+
+All the fields can be read that way, and at the exception of the sender field, all the fields can be written into. The only problem remaining is how to set the sender field of a context mapped to a stack frame. This last point is done by splitting the active stack page in two, between the stack frame having its sender set and the previous one, and the sender field can then be set by changing for a given stack page the stack page it has to return to in case of a return across stack pages.
+
+Obviously, as execution of the program keeps going, the state of the context object as to change. To avoid having to edit the context objectc at each instruction executed, the context recreated is usually a proxy to the stack frame. Referencing a stack frame is not possible directly, but it can be done through a technique similar to the stack frame wrapper explained in the preious chapter.
+
+For more information about the Context-to-Stack Mapping, you can read on the *Cog blog>http://www.mirandabanda.org/cogblog/* the articles named ""Under Cover Contexts and the Big Frame-Up"" and ""An Arranged Marriage"" that deals precisely with this problem.
 
 !! What about Smalltalk Context and sends compared to SmiLang ?
 
 A Smalltalk send does a lookup to find the method to activate and then activate the method. In SmiLang, there is no lookup as the calls are static, but the function activation in SmiLang is very similar to the Smalltalk method activation. 
 
-About the context, there are one main difference. In Smalltalk, the receiver is for the function activation the equivalent of the first argument. However, the receiver is special as it’s the only variable from which the interpreter can directly access its instance variables and it’s the variable used for the lookup.
+About the contexts, there are one main difference. In Smalltalk, the receiver is for the function activation the equivalent of the first argument. However, the receiver is special as it’s the only variable from which the interpreter can directly access its instance variables and it’s the variable used for the lookup, so it is stored in a specific field called ==receiver==.
 
-You can now look into the ==Context== class in Pharo and verify that you understand what the instance variables correspond to and how they are used. You can also inspect some contexts and verify that you understand their states. Closures are slightly more complex in Pharo than in SmiLang, because there are a few optimisations to decrease their memory footprint and improve their performance. 
+For performance, the Pharo implementation of context chose to inline directly the array used by the context's stack in the context object (context are initialized with a fixed number of slots that can be accesed with ==at:== and ==at:put:==). Closures are slightly more complex in Pharo than in SmiLang, because there are a few optimisations to decrease their memory footprint and improve their performance. 
+
+You can now look into the ==Context== class in Pharo and verify that you understand what the instance variables correspond to and how they are used. You can also inspect some contexts and verify that you understand their states.
+
+!! Closures in mainstream languages
+
+As closures are becoming more and more popular, mainstream programming languages such as Java adopted them. Many of these languages have closures able to access remote temporary variables but not performing non local returns. This implies that the closure representation can be simplified to an anonymous function and a temp vector, as the outer context / outer stack frame wrapper is not needed any more.
+
+A few languages, like Ruby, allow the programmer to use non local returns in their closures.
 
 !! Correction
 
 In the repository *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*, one can find a package named SmiLang-Correction. It includes a ''possible'' implementation for each interpreter. 
-
-
-
-
-
-
-
-
-
-
 
