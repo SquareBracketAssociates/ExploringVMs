@@ -467,14 +467,14 @@ Figure *@context1* presents a given computation state showing the relationships 
 
 +Relationships between Context, Stack, Function and Instructions in a context interpreter.>file://figures/context1.pdf|width=75|label=context1+
 
-Let us explain this Figure class by class.
+Let us explain each data structure present in this Figure.
 
 !!!! Context.
 - The ==sender== field of the context references another context, the one which activated it. Such context chain is created during function call: the sender context has temporarily stopped its execution just after the function call that activated the described context.
 - The ==program counter== field holds 3, which means the next instruction the interpreter will execute is the third instruction of the function.
 - The ==function== field is a reference to the function being activated. A context refers to the function because the function is a holder of instructions to be executed.
 - The ==stack pointer== field holds 6, which means that in the space allocated for this specific context stack, which is in our case 7, only 6 values are currently used and the value at position 6 is the top of the stack.
-- Lastly, the ==stack== field references the stack. The context’s stack values are specific to the function activation and independent from other contexts. The values are unrelated to other function activations.
+- Lastly, the ==stack== field references the array internal to the stack representation. The context’s stack values are specific to the function activation and independent from other contexts.
 
 !!!! Function.
 - The field ==name== is useful for debugging purpose.
@@ -488,7 +488,7 @@ A stack is associated to each context, i.e., each function activation. A context
 # The values of the temporary variables.
 # The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the section *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal array and the stack pointer), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the section *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal ==array== and ==stackPointer==), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
 
 !! Concrete Example: Activation of function add:to:
 
@@ -498,7 +498,8 @@ Remember ==add:to:== function definition is:
 stream << (SmiExamples>>#add:to:) sourceCode asPillarSourceCode.
 ]]]
 
-This function is invoked in particular by the function ==example07TempAndCallAndCallArgs==. 
+This function is invoked in particular by the function ==example07TempAndCallAndCallArgs==.
+
 [[[eval=true
 stream << (SmiExamples>>#example07TempAndCallAndCallArgs) sourceCode asPillarSourceCode.
 ]]]
