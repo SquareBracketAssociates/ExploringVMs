@@ -31,10 +31,12 @@ Readers will learn the following concepts during this tutorial:
 
 This tutorial is divided in several chapters:
 #	Description of the SmiLang language
+#	Theoretical part: Implementations of efficent stacks
 #	Implementation of a simple context interpreter
 #	Implementation of a simple stack interpreter
 #	Addition of stack page management in to the stack interpreter
 #	Introduction of naive closures in to the context interpreter
+#	Introduction of simplified closures in to the stack interpreter
 #	Introduction of real closures in to the stack interpreter
 #	Discussion: what are the difference between the Smalltalk model and the SmiLang model
 
@@ -45,9 +47,9 @@ Thanks to Christophe Demarey and Stéphane Ducasse for the early reviews and run
 ! Theory: Stack Implementation
 @StackImplementation
 
-This section describes how to implement efficiently a stack. This discussion is theoretical and does not not deal directly with call stack management. However, efficient call stack management relies on efficient stack implementations, hence call stack management is a direct application of what is described in this chapter. In fact, while explaining the different interpreters, the book refers to this chapter to detail which stack implementation was chosen for which part of the call stack and why it seemed to be the best performance-wise.
+This chapter describes how to implement efficiently a stack. This discussion is theoretical and does not not deal directly with call stack management. However, efficient call stack management relies on efficient stack implementations, hence call stack management is a direct application of what is described in this chapter. In fact, while explaining the different interpreters, the book refers to this chapter to detail which stack implementation was chosen for which part of the call stack and why it seemed to be the best performance-wise.
 
-Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following subsections. There is not such a thing as a very efficient ''generic'' stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
+Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following sections. There is not such a thing as a very efficient ''generic'' stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
 
 In high-level languages such as Pharo, people usually use ==OrderedCollection== to represent different more restrictive data structures such as stacks or queues. Hence, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
 
@@ -110,7 +112,7 @@ It has however several big problems:
 -- Accessing an element of the stack requires two memory reads, one to read the instance of ==StackElement==, one to read the element itself.
 - each element can be very far in memory from the the previous element, leading to many cpu cache miss when pushing and popping elements on stack often.
 
-This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, this design inspired better design as described in the following sections.
+This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, this design inspired better design as described in one of the following section.
 
 !!! Array implementation
 @arrayImplStack
@@ -203,7 +205,7 @@ Growing the stack is useless in this implementation as the stack can't overflow.
 
 This implementation is the most efficient possible (modulo some machine specific optimizations). However, it has some strong constraints such as anticipating the maximum size of the stack sor it cannot be used in all the cases where the programmer needs a stack.
 
-In the next subsection, this implementation of the stack will be referred as the ""fixed-sized stack"".
+In the rest of the book, this implementation of the stack will be referred as the ""fixed-sized stack"".
 
 !!! Copying stack
 
@@ -235,9 +237,9 @@ Secondly, the array used for the internal representation of the stack has a diff
 !!! Stack pages stack
 @StackPageStack
 
-This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in section *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there. 
+This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in subsection *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there. 
 
-In other words, the stack is represented as a linked list of stack pages. Most ==push== and ==pop== operations are done within a stack page so they are very efficient. From time to time, ==push== and ==pop== operations requires the stack to switch to another page, in a similar way to the linked list implementation of the stack discussed in section *@LLStack*, which is less efficient but uncommon. 
+In other words, the stack is represented as a linked list of stack pages. Most ==push== and ==pop== operations are done within a stack page so they are very efficient. From time to time, ==push== and ==pop== operations requires the stack to switch to another page, in a similar way to the linked list implementation of the stack discussed in subsection *@LLStack*, which is less efficient but uncommon. 
 
 When a pop operation implies that the top of the stack is back on the previous stack page, the stack no longer uses the stack page where the popped value was, hence it can be freed. The stack is therefore successfully growing and shrinking, wasting at worst a stack page of memory, with low execution overhead.
 
@@ -324,10 +326,10 @@ This subsection shows some Smalltalk code pushing and popping elements on a stac
 +Example of successive operations on a stack with stack pages.>file://figures/stackpageEx1.pdf|width=77|label=stackpageEx1+ 
 
 # The stack is created and initialized with a first stack page of size 5. We push on stack successively ==$A==, ==$B== and ==$C==. Once done, the stack pointer holds 4 so the top of the stack refers to ==#C== as expected. The first field of the array is ==nil== to mark that this array is the first stack page so stack underflow can be detected.
-# ==$D== is pushed on stack. As there is enough room on the stack page to hold ==$D==, it is pushed on stack as the naive array implementation described in section *@arrayImplStack*.
+# ==$D== is pushed on stack. As there is enough room on the stack page to hold ==$D==, it is pushed on stack as the naive array implementation described in subsection *@arrayImplStack*.
 # ==$E== is pushed on stack. There is not enough room on the stack page for ==$E==. Hence, a new stack page is allocated for the stack. The first field of new stack page refers to the previous page so the stack will be able to pop values back to the values on the first page. ==$E== is pushed on the new page.
-# ==$F== is pushed on stack. As there is enough room on the stack page for ==$F==, it is pushed on stack as the naive array implementation described in section *@arrayImplStack*.
-# The value ==$F== is popped from the stack. After popping, there is still a value on the stack page, hence the pop operation is done as the naive array implementation described in section *@arrayImplStack*.
+# ==$F== is pushed on stack. As there is enough room on the stack page for ==$F==, it is pushed on stack as the naive array implementation described in subsection *@arrayImplStack*.
+# The value ==$F== is popped from the stack. After popping, there is still a value on the stack page, hence the pop operation is done as the naive array implementation described in subsection *@arrayImplStack*.
 # The value ==$E== is popped from the stack. This time, after popping, there are no more values on the stack page. Hence, the stack page is freed. The first value of the page is used to change the reference of the stack page (==array== field) in the stack to the previous stack page. The stack pointer is updated so the top of the stack is the top of the previous stack page.
 
 +Example of successive operations on a stack with stack pages.>file://figures/stackpageEx2.pdf|width=77|label=stackpageEx2+ 
@@ -387,7 +389,7 @@ Assuming that the program uses several stacks that all use stack pages of the sa
 ! SmiLang: A Simple Integer Language
 @SmiLang
 
-During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This section describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
+During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This chapter describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
 
 !! SmiLang Basics
 SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
@@ -478,7 +480,7 @@ Let us explain each data structure present in this Figure.
 
 !!!! Function.
 - The field ==name== is useful for debugging purpose.
-- The fields ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the section).
+- The fields ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the chapter).
 - ==maxStackSize== . For performance reason, the context, on creation, allocates for its stack enough space for the maximum size that its stack can take during the function execution. This maximum size is specified by the compiler. In Figure *@context1* the field ==maxStackSize== holds 7.
 
 !!!! Stack.
@@ -488,7 +490,7 @@ A stack is associated to each context, i.e., each function activation. A context
 # The values of the temporary variables.
 # The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the section *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal ==array== and ==stackPointer==), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the subsection *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal ==array== and ==stackPointer==), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
 
 !! Concrete Example: Activation of function add:to:
 
@@ -590,7 +592,7 @@ Good luck and have fun. In the next chapter you will implement an interpreter us
 ! Simple Stack Interpreter
 @StackInterpreter
 
-In this section, one has to build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
+In this chapter, one has to build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
 
 The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". The next chapter of the book explains how to handle a finite stack. The context interpreter, as implemented in the previous chapter, has several issues:
 - Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the cpu cache), it is in practice even slower.
@@ -622,7 +624,7 @@ The interpreter, instead of knowing the active context, knows directly the state
 In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
 - ""Temporaries"": Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
 - ""Spilled Values"": These values are pushed on top of the stack by some instructions to be consumed by one of the next instruction. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
-- ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the section).
+- ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the chapter).
 - ""==Function==, ==pc== and ==frame pointer=="": Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, the interpreter will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
 
 !!! Active stack frame
@@ -683,7 +685,7 @@ Go to the package tag ==SmiLang>>Stack interpreter==. A ==SmiStackInterpreter== 
 
 The interpretation starts with a fake stack frame which holds flags. The Interpreter then calls a function (the public API, ==#interpret:==, specified in the public method protocol, defines the function to call). The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
 
-The ==SmiStackInterpreterTests== have to pass to proceed to the next section. 
+The ==SmiStackInterpreterTests== have to pass to proceed to the next chapter. 
 
 Good luck and have fun !
 
@@ -696,7 +698,7 @@ The Stack interpreter built in the previous chapter is very nice as it intruced 
 
 !! Solution
 
-A common solution is to split the stack into stack pages of limited fixed size, as described in the section *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuse the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
+A common solution is to split the stack into stack pages of limited fixed size, as described in the subsection *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuse the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
 - Raise a StackOverflow error.
 - Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
 
@@ -710,7 +712,7 @@ The implementation is as follow:
 
 !! Exercise
 
-As an exercise, have the ==SmiStackInterpreterWithStackPagesTests== pass by implementing the ==SmiStackInterpreterWithStackPages==. You only need to reimplement function calls and returns to fit the new behavior described in the previous subsection.
+As an exercise, have the ==SmiStackInterpreterWithStackPagesTests== pass by implementing the ==SmiStackInterpreterWithStackPages==. You only need to reimplement function calls and returns to fit the new behavior described in the previous subsection compared to the interpreter of the previous chapter.
 
 !! Making Calls and Returns across Stack Pages Uncommon
 
@@ -734,7 +736,7 @@ When a new stack page is required, if the current stack page has already overflo
 
 !! Introduction
 
-In this section, the reader will introduce closures the context interpreter. This section deals with the closure implementation and does not explain what is a closure. If you don't know what is a closure, please read first documentation available on the internet about it, such as the chapter ""14. Blocks: a Detailed Analysis"" of the free online book ""Deep into Pharo"".
+In this chapter, the reader will introduce closures the context interpreter. This chapter deals with the closure implementation and does not explain what is a closure. If you don't know what is a closure, please read first documentation available on the internet about it, such as the chapter ""14. Blocks: a Detailed Analysis"" of the free online book ""Deep into Pharo"".
 
 A closure is an object or a data structure that references a function and its enclosing environment. In this implementation, the function is anonymous and the enclosing environment is the context in which the closure was created, that we call the closure’s outer context, as represented on figure *@closure*. 
 
@@ -873,20 +875,20 @@ Open a Pharo 4 image, load the package SmiLang-ClosureExtension you can find on 
 
 Go to the package tag ==SmiLang-ClosureExtension>>context== interpreter. A ==SmiClosureContextInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The SmiClosureContextInterpreterTests have to pass to proceed to the next section. 
+The SmiClosureContextInterpreterTests have to pass to proceed to the next chapter. 
 
 Good luck and have fun !
 
 ! Simplified Closures in the Stack Interpreter
 @ClosureStackInterpreter1
 
-In the two next sections you will introduce the closures in the stack interpreter. For the implementation, we consider as in the chapter *@StackInterpreter* that the stack is infinite. It is possible to implement closures on top of a stack using stack pages, but it introduces extra complexity in the code, espscially for non local returns, whereas it does not introduce new concepts.
+In this chapter and the following one, you will introduce the closures in the stack interpreter. For the implementation, we consider as in the chapter *@StackInterpreter* that the stack is infinite. It is possible to implement closures on top of a stack using stack pages, but it introduces extra complexity in the code, espscially for non local returns, whereas it does not introduce new concepts.
 
-The two next sections, especially the next one, are ""considerably"" more complex than the other sections. As explained in the introduction of this part of the book, these sections are optional to understand the rest of this book.
+These two chapters, especially the next one, are ""considerably"" more complex than the other chapters. As explained in the introduction of this part of the book, they are optional to understand the rest of this book.
 
 !! Problems
 
-The naive closure model described in the previous section is nice to understand closure implementation but is completely broken in the stack interpreter. The main issue lies with terminated function activations.
+The naive closure model described in the previous chapter is nice to understand closure implementation but is completely broken in the stack interpreter. The main issue lies with terminated function activations.
 
 A closure has a reference to a function and its enclosing environment. In the case of the context interpreter, the enclosing environment is the outer context. It can happen that a closure outer context is terminated, in which case the closure’s activation cannot perform a non local return. However, it can still access the terminated outer context temporaries.
 
@@ -899,7 +901,7 @@ If the outer stack frame happens to be terminated, we have two issues.
 
 !! Solutions
 
-We identified two problems so we need to describe two solutions. In this chapter, you are going to build a restrictive interpreter that cannot handle non local returns. This implementation solves the remote temporary access problem, but not the one for non local return. In the next chapter, you will enhance the interpreter to support non local returns. The Closure representation you will use for the two stack interpreters with closures have a field named ==outerStackFrameWrapper==. You will completely ignore this field in this version of the interpreter (but use it in the next section).
+We identified two problems so we need to describe two solutions. In this chapter, you are going to build a restrictive interpreter that cannot handle non local returns. This implementation solves the remote temporary access problem, but not the one for non local return. In the next chapter, you will enhance the interpreter to support non local returns. The Closure representation you will use for the two stack interpreters with closures have a field named ==outerStackFrameWrapper==. You will completely ignore this field in this version of the interpreter (but use it in the next chapter).
 
 This chapter now deals only with remote temporary variables access.
 
@@ -957,56 +959,72 @@ Open a Pharo 4 image, load the package ==SmiLang-StackClosureExtension== you can
 
 Go to the package tag ==SmiLang-StackClosureExtension>>stack interpreter==. A ==SmiSimplifiedClosureStackInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The ==SmiSimplifiedClosureStackInterpreterTests== have to pass to proceed to the next section.
+The ==SmiSimplifiedClosureStackInterpreterTests== have to pass to proceed to the next chapter.
 
 Good luck and have fun !
 
 ! Real Closures in the Stack Interpreter
 @ClosureStackInterpreter2
 
-In this section we extend the previous interpreter to support non local returns.
+In this chapter we extend the previous interpreter to support non local returns.
 
-The general idea is that we do not want to make normal returns more complex because the execution overhead is too high. For example, if at each return we need to check if there is a closure referencing the frame, the performance overhead is way too big. The implementation of non local return needs to avoid such constraints.
+The general idea behind this implementation is that we do not want to make normal returns more complex than how they were in the previous interpreter last chapter. We can slow down a bit non local returns, as they are uncommon, but we can't slow down regular returns, which are very common.
+
+If the implementation requires each regular return to do a check, for example checking if there is a closure referencing the stack frame where the return happens and do something if this is the case, the interpreter is then twice slower than the implementation described in this chapter. This implementation, even though fairly complex, does not add any overhead on normal returns. Only non local returns are slower than they could be, but as they are much less common than normal return, the performance is overall way faster.
 
 !! Non local return implementation
 
-This is one of the trickiest part of the implementation. Now that remote temporary variables are accessed through a temp vector, the closure needs to keep a reference to its outer stack frame activation only for non local returns.
+This is one of the trickiest part of an efficient Smalltalk VM implementation. Now that remote temporary variables are accessed through a temp vector, the closure needs to keep a reference to its outer stack frame activation ""only"" for non local returns.
 
 !!! Stack frame representation
 
-For non local return, we will change our stack frame representation. After the frame pointer and before the references to the temporary variables, we will keep two fields in each stack frame. This implies that accessing temporary variables in this interpreter requires to shift the framePointer by an additionnal 2 for the extra two fields. 
+To support non local returns, we change our stack frame representation. Right after the frame pointer and just before the temporary variable slots, the stack frame keeps two extra fields, as shown on figure *@stackRepresentation2*. This implies that accessing temporary variables in this interpreter requires to shift the framePointer by an additionnal 2 for the extra two fields. 
 
-+New stack frame representation.>file://figures/stackRepresentation2.pdf|width=60|label=stackRepresentation2+
++New stack frame representation.>file://figures/stackRepresentation2.pdf|width=58|label=stackRepresentation2+
 
 !!! Stack frame creation
 
-At stack frame creation time (for example a function call), the stack pointer needs also to be pushed by an additionnal 2 to make room for the two fields. The fields will be used for the potential stack frame wrapper (field 1) and the reference to the closure (field 2).
+At stack frame creation time (function call or closure activation), the stack pointer needs to be pushed by an additionnal 2 to make room for the two extra fields. The two fields are used for the potential stack frame wrapper (field 1) and a reference to the closure activated in case of closure activation (field 2).
 
-In addition, if the stack frame represents a closure activation, when creating the stack frame the closure field needs to be set to refer to the closure, else it is set to a specific flag (you can use symbols for flags in your implementation) to mark that the frame is not a closure activation. The interpreter can then easily access the closure of the current activation relatively to the frame pointer (framePointer + 2).
+The two fields are initialized as follow:
+# ""Stack frame wrapper"": set to a flag (for example the symbol ==#notWrapped==) marking the stack frame as ""not"" being wrapped as shown on figures *@InitializedSF1* and *@InitializedSF2*.
+# ""Closure"": It depends if the stack frame represent a closure activation or not (we call named function activation a non closure activation):
+- ''Named function activation'': the closure field is initialized to a flag marking a ""non"" closure activation, for example ==#noClosure==, as shown on figure *@InitializedSF1*.
+- ''Closure activation'': the closure field is initialized with the closure being activated, as represented on figure *@InitializedSF2*.
 
-Still at stack frame creation time, the stack frame wrapper field is set to another flag with marks the stack frame as not being wrapped. 
++Initialized Stack Frame (named function).>file://figures/InitializedSF1.pdf|width=64|label=InitializedSF1+
+
++Initialized Stack Frame (closure).>file://figures/InitializedSF2.pdf|width=64|label=InitializedSF2+
+
+Thanks to the closure field, the interpreter can access the closure of the current activation relatively to the frame pointer or a flag marking a non closure activation (framePointer + 2).
+
+As explained, a stack frame, including a stack frame representing a closure activation, is always initialized ""not"" wrapped, i.e., with a ==#notWrapped== flag in the stack frame pointer field.
 
 !!! Closure creation
 
-When a closure is created in the stack frame, the stack frame needs to be wrapped (if not already wrapped). For this process one needs to understand what a stack frame wrapper is. A stack frame wrapper is a data structure allocated aside from the stack. It has a single field that refers to the frame pointer location of the stack frame it wraps. Wrapping a stack frame implies the creation of the stack frame wrapper so it refers to the stack frame it wraps and to set the stack frame wrapper field of the stack frame to refer to the stack frame wrapper, as shown on figure *@stackFrameWrapper*.
+When a closure is created, the active stack frame, representing the enclosing environment of the closure, needs to be wrapped (if not already wrapped). Wrapping a stack frame is two step process, a ""non"" wrapped stack frame is shown on figure *@notWrappedFrame* and a wrapped stack frame is shown on figure *@WrappedFrame*:
+# A ""stack frame wrapper"" is created. A stack frame wrapper is a data structure allocated aside from the stack. It has a single field that refers to the frame pointer location of the stack frame it wraps. The stack frame wrapper created refers to the active stack frame, representing the enclosing environment of the closure.
+# The stack frame wrapper field of the stack frame is edited to refer to the stack frame wrapper.
 
-Instead of keeping a reference to their outer context as in the context interpreter, closures keep a reference to their outer stack frame’s stack frame wrapper.
++Stack Frame (""not"" wrapped).>file://figures/notWrappedFrame.pdf|width=75|label=notWrappedFrame+
 
-+Stack Frame (not wrapped) versus Wrapped Stack Frame.>file://figures/stackFrameWrapper.pdf|width=75|label=stackFrameWrapper+
++Wrapped Stack Frame.>file://figures/WrappedFrame.pdf|width=75|label=WrappedFrame+
+
+The closure, instead of keeping a reference to its outer context as in the context interpreter, keeps a reference to its outer stack frame wrapper as shown on figure *@WrappedFrame*.
 
 !!! Accessing the wrapper from the stack frame
 
 Each stack frame knows if it is already wrapped by checking its stack frame wrapper field:
-- If the value is the flag set at stack frame creation time, then it is not wrapped.
-- If the value is not the flag, then it is wrapped and the value of the field is the stack frame wrapper.
+- If the value is the flag set at stack frame creation time, then it is not wrapped, as shown on figure *@notWrappedFrame*.
+- If the value is not the flag, then it is wrapped and the value of the field is the stack frame wrapper, as described on figure *@WrappedFrame*.
 
 !!! Accessing the stack frame from the wrapper
 
 It’s more complex for the stack frame wrapper to access its frame because it needs to know if the stack frame it wraps is still valid. This is a two step operations.
 
-Firstly, it needs to figure out if the frame pointer it holds still references to a frame pointer. If the stack frame has been terminated, it may have been overrided by other frames of different size and the stackFramePointer location may be a random field in another stack frame. To do so, it walks the stack starting at the interpreter’s active frame pointer from a frame pointer to the next one, until it finds a frame pointer matching the stackFramePointer. If it finds a matching frame pointer, then the stack frame wrapper references a stack frame, but it does not know yet if it references the stack frame it wraps or another one. If no matching frame pointer are found, then the stack frame is dead.
+Firstly, the stack frame wrapper needs to figure out if the field on stack it holds is still a frame pointer. If the stack frame has been terminated, it may have been overrided by other frames of different sizes and the field held may be a random field in another stack frame. To do so, the stack frame wrapper walks the stack starting at the interpreter’s active frame pointer from a frame pointer to the next one, until it finds a frame pointer matching the field it holds. If it finds a matching frame pointer, then the stack frame wrapper references a stack frame, but the stack frame wrapper does not know yet if it references the stack frame it wraps or another one. If no matching frame pointer is found, then the stack frame is dead.
 
-Secondly, the stack frame wrapper now knows it references a stack frame. It can then read the stack frame wrapper field of the stack frame. If the field refers to the stack frame wrapper itself, then the stack frame is still live. If it refers the flag or another stack frame wrapper, then the stack frame is dead and has been overridden by another stack frame.
+Secondly, the stack frame wrapper now knows it references a stack frame. It can then read the stack frame wrapper field of the stack frame. If the field refers back to the stack frame wrapper itself, then the correct stack frame is referenced. If it refers to the ==#notWrapped== flag or another stack frame wrapper, then the stack frame is dead and has been overridden by another stack frame.
 
 !!! Performing a non local return
 
@@ -1020,9 +1038,13 @@ Open a Pharo 4 image, load the package ==SmiLang-StackClosureExtension== you can
 
 Go to the package tag ==SmiLang-StackClosureExtension>>stack interpreter==. A ==SmiRealClosureStackInterpreter== skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The ==SmiRealClosureStackInterpreterTests== have to pass to proceed to the next section. This exercise is more difficult than the previous ones the non local returns implementation.
+The ==SmiRealClosureStackInterpreterTests== have to pass to proceed to the next chapter. This exercise is more difficult than the previous ones because of the non local returns implementation.
 
 Good luck and have fun !
+
+!! Discussion: non local returns and stack pages
+
+If the interpreter supports both non local returns and stack pages, there are a few more difficulties. The stack frame wrapper, to refer to a field on stack, needs to refer to a stack page and the index of the field in the stack page instead of just the index of the field on stack. In addition, when a stack frame wrapper checks if the field it holds is indeed a frame pointer, the interpreter needs to walk up the stack including stack page switches.
 
 ! Discussion
 @Discussion
