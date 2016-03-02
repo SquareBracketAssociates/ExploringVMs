@@ -27,7 +27,7 @@ Readers will learn the following concepts during this tutorial:
 
 !!!! Outline
 
-""That needs to be generated somehow. Not up to date.""
+%That needs to be generated somehow.
 
 This tutorial is divided in several chapters:
 #	Description of the SmiLang language
@@ -740,15 +740,15 @@ In this chapter, the reader will introduce closures the context interpreter. Thi
 
 A closure is an object or a data structure that references a function and its enclosing environment. In this implementation, the function is anonymous and the enclosing environment is the context in which the closure was created, that we call the closure’s outer context, as represented on figure *@closure*. 
 
-+Closure representation.>file://figures/closure.pdf|width=64|label=closure+
++Closure representation.>file://figures/closure.pdf|width=62|label=closure+
 
 In addition to regular function, closure’s function activation (contexts representing closure activations) have a reference to the closure they activated, as emphasized on figure *@closureContext*. 
 
-+Context versus Closure Context.>file://figures/closureContext.pdf|width=64|label=closureContext+
++Context versus Closure Context.>file://figures/closureContext.pdf|width=62|label=closureContext+
 
 If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. We call the ""outer context chain"" the list of outer context from the closure’s direct outer context to the first context which is not a closure activation. Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
 
-+Outer Context chain.>file://figures/OuterContextChain.pdf|width=65|label=OuterContextChain+
++Outer Context chain.>file://figures/OuterContextChain.pdf|width=63|label=OuterContextChain+
 
 !!! Extending the language
 
@@ -909,11 +909,11 @@ This chapter now deals only with remote temporary variables access.
 
 If a closure outlives its outer stack frame, the outer stack frame field may have been overridden by new values and we can’t access its temporary variables any more. To solve this problem, the compiler will identify temporary variables that are accessed from multiple stack frames (at least one remote access). Such variables values will not be stored on stack, but on an array allocated outside of the stack, also called temp vector, as shown on figure *@tempVector1*. In this implementation, the temp vector will be a Pharo array. 
 
-+Temp vector referenced by a closure and a stack frame.>file://figures/tempVector1.pdf|width=67|label=tempVector1+
++Temp vector referenced by a closure and a stack frame.>file://figures/tempVector1.pdf|width=64|label=tempVector1+
 
 When a closure is created, if it needs to access remote temporaries, it keeps a reference to a temp vector in addition to its anonymous function and its outer environment. Specific instructions are added in the language to create temp vectors, to create closures with a temp vector and to support access to temporaries in temp vectors. We discuss these instructions in the next subsection.
 
-+Access of the temporary 2 in vector at 3.>file://figures/tempVectorTempAccess.pdf|width=70|label=tempVectorTempAccess+
++Access of the temporary 2 in vector at 3.>file://figures/tempVectorTempAccess.pdf|width=67|label=tempVectorTempAccess+
 
 If a regular function (non closure function) holds an instruction which creates a closure and that the closure access the regular function temporaries, then the regular function starts with a create temp vector instruction. This instruction creates the temp vector and pushes it on top of stack. The function then stores the temp vector in a temporary variable slot. Further access in the method to the temporaries accessed from multiple stack frame are done indirectly through the temp vector. 
 
@@ -980,7 +980,7 @@ This is one of the trickiest part of an efficient Smalltalk VM implementation. N
 
 To support non local returns, we change our stack frame representation. Right after the frame pointer and just before the temporary variable slots, the stack frame keeps two extra fields, as shown on figure *@stackRepresentation2*. This implies that accessing temporary variables in this interpreter requires to shift the framePointer by an additionnal 2 for the extra two fields. 
 
-+New stack frame representation.>file://figures/stackRepresentation2.pdf|width=58|label=stackRepresentation2+
++New stack frame representation.>file://figures/stackRepresentation2.pdf|width=55|label=stackRepresentation2+
 
 !!! Stack frame creation
 
@@ -1006,7 +1006,7 @@ When a closure is created, the active stack frame, representing the enclosing en
 # A ""stack frame wrapper"" is created. A stack frame wrapper is a data structure allocated aside from the stack. It has a single field that refers to the frame pointer location of the stack frame it wraps. The stack frame wrapper created refers to the active stack frame, representing the enclosing environment of the closure.
 # The stack frame wrapper field of the stack frame is edited to refer to the stack frame wrapper.
 
-+Stack Frame (""not"" wrapped).>file://figures/notWrappedFrame.pdf|width=75|label=notWrappedFrame+
++Stack Frame (""not"" wrapped).>file://figures/notWrappedFrame.pdf|width=68|label=notWrappedFrame+
 
 +Wrapped Stack Frame.>file://figures/WrappedFrame.pdf|width=75|label=WrappedFrame+
 
