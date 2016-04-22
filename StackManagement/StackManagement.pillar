@@ -7,7 +7,7 @@ load.
 Smalltalk snapshot: true andQuit: false.
 ]]]
 
-! Introduction
+% ! Introduction
 
 This part of the book deals with call stack management, especially when the executed programming language supports closures. 
 
@@ -27,8 +27,6 @@ Readers will learn the following concepts during this tutorial:
 
 !!!! Outline
 
-%That needs to be generated somehow.
-
 This tutorial is divided in several chapters:
 #	Description of the SmiLang language
 #	Theoretical part: Implementations of efficent stacks
@@ -41,8 +39,9 @@ This tutorial is divided in several chapters:
 #	Discussion: what are the difference between the Smalltalk model and the SmiLang model
 
 !!!! Thanks
-Thanks to Cyril Ferlicot and Vincent Blondeau for the very early reviews and runs of the tutorial.
-Thanks to Christophe Demarey and Stéphane Ducasse for the early reviews and runs of the tutorial.
+Thanks to Stéphane Ducasse and Philippe Back for their contributions to this part of the book, especially their multiple reviews and runs of the tutorial.
+
+Thanks to Cyril Ferlicot, Christophe Demarey and Vincent Blondeau for their reviews and runs of the tutorial.
 
 ! Theory: Stack Implementation
 @StackImplementation
@@ -286,7 +285,7 @@ StackedPageStack >> push: value
 StackedPageStack >> nextStackPage
 	| newArray |
 	newArray := Array new: array size.
-	"We keep a reference to the previous page
+	"A reference to the previous page is kept
 	to be able to pop to it later"
 	newArray at: 1 put: array.
 	array := newArray.
@@ -325,7 +324,7 @@ This subsection shows some Smalltalk code pushing and popping elements on a stac
 
 +Example of successive operations on a stack with stack pages.>file://figures/stackpageEx1.pdf|width=77|label=stackpageEx1+ 
 
-# The stack is created and initialized with a first stack page of size 5. We push on stack successively ==$A==, ==$B== and ==$C==. Once done, the stack pointer holds 4 so the top of the stack refers to ==#C== as expected. The first field of the array is ==nil== to mark that this array is the first stack page so stack underflow can be detected.
+# The stack is created and initialized with a first stack page of size 5. The program pushes on stack successively ==$A==, ==$B== and ==$C==. Once done, the stack pointer holds 4 so the top of the stack refers to ==#C== as expected. The first field of the array is ==nil== to mark that this array is the first stack page so stack underflow can be detected.
 # ==$D== is pushed on stack. As there is enough room on the stack page to hold ==$D==, it is pushed on stack as the naive array implementation described in subsection *@arrayImplStack*.
 # ==$E== is pushed on stack. There is not enough room on the stack page for ==$E==. Hence, a new stack page is allocated for the stack. The first field of new stack page refers to the previous page so the stack will be able to pop values back to the values on the first page. ==$E== is pushed on the new page.
 # ==$F== is pushed on stack. As there is enough room on the stack page for ==$F==, it is pushed on stack as the naive array implementation described in subsection *@arrayImplStack*.
@@ -578,10 +577,9 @@ For now let us focus on the context interpreter and its companion test class ==S
 
 The interpretation starts with a fake Context which holds flags. The interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, specifies the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
 
-The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. We suggest to look at the code and the compiled version of the examples.
+The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. It is possible to look at the code and the compiled version of the examples.
 
-Here is the code of the first test, where you see the definition and instructions of the method 
-under test and the actual test.
+Here is the code of the first test, where you see the definition and instructions of the method under test and the actual test.
 
 [[[eval=true
 stream << (SmiContextInterpreterTests>>#testExample1) sourceCode asPillarSourceCode.
@@ -651,7 +649,7 @@ The active stack frame starts with a framePointer which refers to the framePoint
 
 !! Temporary access
 
-We assume that the compiler forbids writing into the function arguments (compilation error). Hence, the store into temporary variable instruction remains simple as it assumes the temp index is the index of a temporary variable. Remember that the temporaries are now stored at the beginning of the stack frame (just after the frame pointer).
+The interpreter assumes that the compiler forbids writing into the function arguments (compilation error). Hence, the store into temporary variable instruction remains simple as it assumes the temp index is the index of a temporary variable. Remember that the temporaries are now stored at the beginning of the stack frame (just after the frame pointer).
 
 The ==pushTemp== instruction is different. Depending on the tempIndex and the value of numArgs in the function, two cases are found:
 
@@ -694,7 +692,7 @@ Good luck and have fun !
 
 !! Problem
 
-The Stack interpreter built in the previous chapter is very nice as it intruced many concepts. It has however a critical flaw: the stack is considered as infinite. An infinite stack is possible theoretically but not in practice as you need to specify to the computer a size to allocate for the stack. This size can’t be too big because if the program uses multiple processes, each process requires a separate stack. 
+The Stack interpreter built in the previous chapter is very nice as it introduced many concepts. It has however a critical flaw: the stack is considered as infinite. An infinite stack is possible theoretically but not in practice as you need to specify to the computer a size to allocate. This size can’t be too big because if the program uses multiple processes, each process requires a separate stack. 
 
 !! Solution
 
@@ -702,13 +700,17 @@ A common solution is to split the stack into stack pages of limited fixed size, 
 - Raise a StackOverflow error.
 - Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
 
-When a new stack frame is created, using the ==maxStackSize== field of the function allocated, the interpreter can predict if the stack page will overflow or not during the execution of the method. If this is the case, the interpreter switches to a new stack page. There is no such thing as a stack frame split between two pages. With this strategy, the interpreter needs to check for stack page overflow only at stack frame creation time and not at every ==push== operation. Based on the same idea, the interpreter needs to check for stack page underflow only at function return time and not at each ==pop== operation.
+To avoid checking at each ==push== instruction if the stack page overflows or not, the interpreter uses the ==maxStackSize== field of the function executed to predict at stack frame creation time if the stack is going to overflow or not during the function execution. If a stack overflow is going to happen, the interpreter switches to a new stack page. There is no such thing as a stack frame split between two pages, it cannot happen.
+
+On the contrary to the simple stack with stack pages described in subsection *@StackPageStack*, each stack page can have several unused fields. Indeed, the interpreter switches to a new stack page if there is not enough room for the next function execution, even if there are a few free fields left on the active stack page. 
+
+This complexifies a bit the stack page management, as when popping across stack pages, the stack pointer needs to be restored to the correct field in the previous stack page which is not necessarily the top field of the page. To know what value the stack pointer has to be restored to, the stack has to keep additionnal metadata at the beginning of each page. The simple scheme described in subsection *@StackPageStack* only keeps the reference to the previous stack page at the beginning of each page, whereas this implementation needs to keep in addition the stack pointer value to restore.
 
 !!! Implementation
 
 The implementation is as follow:
 # ""Function Activation"": In addition to what is done in the ==StackInterpreter==, the interpreter estimates the stack frame size based on the ==maxStackSize== field of the function to activate. If there is not enough room in the stack page for the next stack frame, the interpreter switches to a new stack page.
-# ""Return"": In addition to the ==StackInterpreter== behavior, if the stack frame returning is at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page can be marked (for example, the saved pc can be saved as a negative value) so the interpreter knows it has to do a return across stack pages.
+# ""Return"": In addition to the ==StackInterpreter== behavior, if the stack frame returning is at the top of a stack page, the interpreter returns to a stack frame in another stack page. The top of a stack page has to be marked (for example, the return pc of the first stack frame of a page can be a flag, with the actual pc in the stack page metadata first fields) so the interpreter knows it has to do a return across stack pages.
 
 !! Exercise
 
@@ -746,7 +748,7 @@ In addition to regular function, closure’s function activation (contexts repre
 
 +Context versus Closure Context.>file://figures/closureContext.pdf|width=62|label=closureContext+
 
-If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. We call the ""outer context chain"" the list of outer context from the closure’s direct outer context to the first context which is not a closure activation. Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
+If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. The list of outer context from the closure’s direct outer context to the first context which is not a closure activation is called ""outer context chain"". Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
 
 +Outer Context chain.>file://figures/OuterContextChain.pdf|width=63|label=OuterContextChain+
 
@@ -911,7 +913,7 @@ If a closure outlives its outer stack frame, the outer stack frame field may hav
 
 +Temp vector referenced by a closure and a stack frame.>file://figures/tempVector1.pdf|width=64|label=tempVector1+
 
-When a closure is created, if it needs to access remote temporaries, it keeps a reference to a temp vector in addition to its anonymous function and its outer environment. Specific instructions are added in the language to create temp vectors, to create closures with a temp vector and to support access to temporaries in temp vectors. We discuss these instructions in the next subsection.
+When a closure is created, if it needs to access remote temporaries, it keeps a reference to a temp vector in addition to its anonymous function and its outer environment. Specific instructions are added in the language to create temp vectors, to create closures with a temp vector and to support access to temporaries in temp vectors. These instructions are discussed in the next subsection.
 
 +Access of the temporary 2 in vector at 3.>file://figures/tempVectorTempAccess.pdf|width=67|label=tempVectorTempAccess+
 
