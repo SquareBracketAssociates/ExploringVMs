@@ -11,7 +11,7 @@ Smalltalk snapshot: true andQuit: false.
 
 This part of the book deals with call stack management, especially when the executed programming language supports closures. 
 
-To master all the concepts exposed, the reader has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang.
+To master all the concepts exposed, the reader has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang, managing only small integers.
 
 Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Chapters *@ContextInterpreter* and *@ClosureContextInterpreter* and read the Chapters *@StackImplementation* and *@Discussion* to continue reading the book. The Chapters *@StackInterpreter*, *@StackPages*, *@ClosureStackInterpreter1* and *@ClosureStackInterpreter2* deals with interpreters using a native stack and are not required to understand the next parts of the book.
 
@@ -50,7 +50,7 @@ This chapter describes how to implement efficiently a stack. This discussion is 
 
 Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following sections. There is not such a thing as a very efficient ''generic'' stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
 
-In high-level languages such as Pharo, people usually use ==OrderedCollection== to represent different more restrictive data structures such as stacks or queues. Hence, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
+In high-level languages such as Pharo, people usually use ==OrderedCollection== to represent different more restrictive data structures such as stacks or queues. (SD: I do not get the flow between first sentence and second) Hence, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
 
 The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are ""not"" part of a conventional stack APIs.
 
@@ -61,7 +61,7 @@ The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can con
 
 The first naive implementation is to represent a stack as a linked list. The stack keeps a reference to the top element, and each element keeps a reference to the previous element on stack, or nil if it's the bottom element.
 
-An example of such a stack, where the characters ==$A, $B and $C== were successively pushed, is represented on figure *@linkedListStack*.
+Figure *@linkedListStack* shows an example of such a stack, where the characters ==$A, $B and $C== were successively pushed.
 
 +Linked List Stack where ==$A, $B and $C== were successively pushed.>file://figures/linkedListStack.pdf|width=58|label=linkedListStack+ 
 
@@ -101,7 +101,7 @@ Stack >> pop
 			value ]
 ]]]
 
-The stack implementation used in Pharo is very similar to this implementation. However, the Pharo ==Stack== has many more APIs, most of them being unconventionnal for a stack.
+The stack implementation used in Pharo is very similar to this implementation. However, the Pharo ==Stack== has a much larger APIs, most of them being unconventionnal for a stack.
 
 This implementation has the big advantage that it cannot overflow (as long as there are memory available). In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
 
