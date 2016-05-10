@@ -538,19 +538,19 @@ The sender field holds the activation of the function ==example07TempAndCallAndC
 
 +Context and collaborators for the ==add:to:== call in ==example07TempAndCallAndCallArgs==.>file://figures/context2.pdf|width=78|label=context2+
 
-The programCounter is 2, which means that 
+The ==programCounter== is 2, which means that
 -  The first instruction ==1| pushTemp 2== has already been executed or is currently being executed.
 - The second instruction, ==2| pushTemp 1== is the next instruction to be executed. Note that in most interpreter implementations, the ==pushTemp== instruction works both for arguments and temporary variables depending on the value of the temp index encoded in the instruction. For store, it reads the value to store on the stack but does not change the stack pointer. For push, it pushes the value of the temporary variable on the stack. In this case the instruction is used to access the arguments values.
 
-The function field holds a reference to the function ==add:to:==. This function has 2 arguments, 0 temporary variables and a stack that can go up to 4 slots. It has a list of 4 instructions.
+The ==function== field holds a reference to the function ==add:to:==. This function has 2 arguments, 0 temporary variables and a stack that can go as deep as 4 entries. It has a list of 4 instructions.
 
-The current stack holds the values of the 2 arguments and the spilled value 2 due to the first instruction ==1| pushTemp 2== that has been executed.
+The current stack holds the values of the two arguments of the function call ==call add: t to: 2== and the spilled value 2 due to the first instruction ==1| pushTemp 2== that has been executed.
 
 
 !! Interpretation
 Now let us look at two examples of execution. 
 
-+Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1.pdf|width=53|label=contextInterpretation1+ 
++Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1-v2.pdf|width=100|label=contextInterpretation1+ 
 
 !!! Example 1: Interpretation of ==1 + 2==
 
