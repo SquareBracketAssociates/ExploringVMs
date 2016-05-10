@@ -394,12 +394,18 @@ Assuming that the program uses several stacks that all use stack pages of the sa
 ! SmiLang: A Simple Integer Language
 @SmiLang
 
-During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates Smis. This chapter describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
+During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates small integers (Smis). This chapter describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
 
 !! SmiLang Basics
 SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
 
-The Smi language has 7 instructions:
+SmiLang supports the following programmer level operations: 
+- Definition of temporary variables, constant Smi definitions, functions,
+- Access to temporaries and function arguments,
+- Store values to temporaries,
+- Calls to primitives operation (such as addition) and user defined functions.
+
+Such high-level operations are compiled into 7 low-level instructions:
 
 [[[eval=true
   SmiCompiler usedInstructions do: [ :each |
@@ -451,9 +457,19 @@ exampleSelectors do: [ :each |
 	stream << (SmiCompiler new compilePharoMethod: (SmiExamples>>each)) printString asPillarSourceCode. ].
 ]]]
 
+
+SD: would be nice to explain why we need to pop after the storetmp 
+
+The  instruction storeTemp reads the value to store on the stack but does not pop it. Therefore the compiler should pop it.  
+
+SD: if we compare pop and returnTop we see that returnTop is really important but unclear: the description above is full of hidden assumption:  push top of stack on the context’s sender or stack frame caller. Pursuing the execution resumes the execution in the calling function. No idea what is context' sender. So having a simple diagram and explanation would help. The point is that the context idea is never introduced. 
+
+
 !!! We are set
 
 The complete SmiLang has been introduced. This language may not be usable for a real application but it is perfect for our exercise which consists of the different implementations of function calls and returns.
+
+SD: mention that the tutorial offers a compiler producing such instructions.
 
 ! Context Interpreter
 @ContextInterpreter
@@ -486,16 +502,21 @@ Let us explain each data structure present in this Figure.
 !!!! Function.
 - The field ==name== is useful for debugging purpose.
 - The fields ==numArguments== and ==numTemporaries== describe the information mandatory to the execution of the function. They are determined by the compiler. The interpreter and debugger use these values to figure out, for each value on stack, if they correspond to an argument, a temp or a spilled value (value temporarily pushed on stack for the execution of instructions, detailled later in the chapter).
-- ==maxStackSize== . For performance reason, the context, on creation, allocates for its stack enough space for the maximum size that its stack can take during the function execution. This maximum size is specified by the compiler. In Figure *@context1* the field ==maxStackSize== holds 7.
+- ==maxStackSize==. For performance reason, the context, on creation, allocates for its stack enough space for the maximum size that its stack can take during the function execution. This maximum size is specified by the compiler. In Figure *@context1* the field ==maxStackSize== holds 7.
 
 !!!! Stack.
-
 A stack is associated to each context, i.e., each function activation. A context's stack is composed by the following values, in this specific order:
 # The values of the function arguments.
 # The values of the temporary variables.
 # The spilled values, which are the values pushed on stack by previously executed instructions.
 
-The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the subsection *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal ==array== and ==stackPointer==), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
+The compiler can guarantee, for a given function, that the stack of its activation does not need to be bigger than a size it computes (==maxStackSize== field of a function) and that the instructions generated will not lead to stack underflows or overflows at execution time. Hence, the context can use the ''fixed-size stack'' design described in the Section *@FixedSizedStack*. Instead of creating a separate data structure (i.e., the context refering to the stack, the stack itself refering to its internal ==array== and ==stackPointer==), to limit the number of memory reads, the context directly holds the ==stackPointer== and the array required by the stack representation (this array is named ==stack== in the implementation you will work on). On Figure *@context1*, the context have the fields ==stackpointer== and ==stack==, the stack being a reference to an array.
+
+
+!!!! Two Different Stacks.
+Pay attention, the term stack is a bit overloaded here. In fact we have two stacks: 
+On the one hand, a context interpreter represents the current state of its execution using a call stack: a kind of linked list of contexts. This is such a stack that you see in a traditional debugger. On the second hand, in addition each context needs some memory organized as a stack to manipulate temporaries, arguments and to perform the computation of the function associated currently executed. This is the stack (Array) associated to the context as shown in Figure *@context1*.
+
 
 !! Concrete Example: Activation of function add:to:
 
@@ -518,7 +539,7 @@ The sender field holds the activation of the function ==example07TempAndCallAndC
 +Context and collaborators for the ==add:to:== call in ==example07TempAndCallAndCallArgs==.>file://figures/context2.pdf|width=78|label=context2+
 
 The programCounter is 2, which means that 
--  The first instructions ==1| pushTemp 2== has already been executed or is currently being executed.
+-  The first instruction ==1| pushTemp 2== has already been executed or is currently being executed.
 - The second instruction, ==2| pushTemp 1== is the next instruction to be executed. Note that in most interpreter implementations, the ==pushTemp== instruction works both for arguments and temporary variables depending on the value of the temp index encoded in the instruction. For store, it reads the value to store on the stack but does not change the stack pointer. For push, it pushes the value of the temporary variable on the stack. In this case the instruction is used to access the arguments values.
 
 The function field holds a reference to the function ==add:to:==. This function has 2 arguments, 0 temporary variables and a stack that can go up to 4 slots. It has a list of 4 instructions.
