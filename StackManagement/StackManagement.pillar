@@ -400,12 +400,14 @@ During this tutorial, the reader will implement several interpreters of the lang
 SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
 
 SmiLang supports the following programmer level operations: 
-- Definition of temporary variables, constant Smi definitions, functions,
-- Access to temporaries and function arguments,
-- Store values to temporaries,
+- Definition of temporary variables, constant Smi, and functions.
+- Access to temporaries and function arguments.
+- Store values to temporaries.
 - Calls to primitives operation (such as addition) and user defined functions.
 
-Such high-level operations are compiled into 7 low-level instructions:
+
+This tutorial comes with a ready to use compiler transforming the high-level programmer 
+code into stack-oriented instructions. Such high-level operations are compiled into 7 low-level instructions:
 
 [[[eval=true
   SmiCompiler usedInstructions do: [ :each |
@@ -469,7 +471,6 @@ SD: if we compare pop and returnTop we see that returnTop is really important bu
 
 The complete SmiLang has been introduced. This language may not be usable for a real application but it is perfect for our exercise which consists of the different implementations of function calls and returns.
 
-SD: mention that the tutorial offers a compiler producing such instructions.
 
 ! Context Interpreter
 @ContextInterpreter
@@ -515,7 +516,9 @@ The compiler can guarantee, for a given function, that the stack of its activati
 
 !!!! Two Different Stacks.
 Pay attention, the term stack is a bit overloaded here. In fact we have two stacks: 
-On the one hand, a context interpreter represents the current state of its execution using a call stack: a kind of linked list of contexts. This is such a stack that you see in a traditional debugger. On the second hand, in addition each context needs some memory organized as a stack to manipulate temporaries, arguments and to perform the computation of the function associated currently executed. This is the stack (Array) associated to the context as shown in Figure *@context1*.
+
+- On the one hand, a context interpreter represents the current state of its execution using a call stack: a kind of linked list of contexts. This is such a stack that you see in a traditional debugger. 
+- On the other hand, in addition each context needs some memory organized as a stack to manipulate temporaries, arguments and to perform the computation of the function associated and currently executed. This is the stack (implemented using an Array) associated to the context as shown in Figure *@context1*.
 
 
 !! Concrete Example: Activation of function add:to:
@@ -547,44 +550,62 @@ The ==function== field holds a reference to the function ==add:to:==. This funct
 The current stack holds the values of the two arguments of the function call ==call add: t to: 2== and the spilled value 2 due to the first instruction ==1| pushTemp 2== that has been executed.
 
 
-!! Interpretation
 Now let us look at two examples of execution. 
 
-+Stack state at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1-v2.pdf|width=100|label=contextInterpretation1+ 
 
-!!! Example 1: Interpretation of ==1 + 2==
 
-Figure *@contextInterpretation1* shows the state of a context's stack at each pc during the execution of 1 + 2.
+!! Example 1: Interpretation of ==1 + 2==
 
-- ""Step 1"": When the interpretation of 1 + 2 starts, stackPointer is at 0, 2 slots are already allocated on stack for the computation, pc is 1.
++Stack states at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1-v2.pdf|width=100|label=contextInterpretation1+ 
+
+Let us now execute step by step ==1 + 2==. Figure *@contextInterpretation1* shows the state of a context's stack at each program counter during the execution of expression ==1 + 2==.
+Remember that the program counter (pc) points to the next instruction to be executed. 
+
+- ""Step 1"": When the interpretation of 1 + 2 starts, stackPointer (sp) is at 0, 2 slots are already allocated on stack for the computation, program counter (pc) is 1.
 
 - ""Step 2"": First instruction execution (pushSmi 1): the constant 1 is pushed on stack. stackPointer is now 1.
 
 - ""Step 3"": Second instruction execution (pushSmi 2):  the constant 2 is pushed on stack. stackPointer  is now 2.
 
-- ""Step 4"": Third instruction execution (primitive +):  the two constants are popped from the stack, the interpreter computes the result (by asking the host language or the cpu) , and pushes the result on stack. stackPointer is now 1. The value at the second stack position is 2 but it should not be reached by execution any more: it is what is called a spilled value.
+- ""Step 4"": Third instruction execution (primitive +):  the two constants are popped from the stack, the interpreter computes the result (by asking the host language or CPU), and pushes the result on stack. ==stackPointer== (sp) is now 1. The value at the second stack position is 2 but it will not be reached by execution anymore: it is what is called a ''spilled'' value.
 
-!!!Example 2: Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
 
-+Stack state for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=57|label=contextInterpretation2+
 
-The first steps of the interpretation are drawn in Figure *@contextInterpretation2*. Try to draw or imagine the next steps.
+!!Example 2: Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
+
++Stack states for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=57|label=contextInterpretation2+
+
+Let us now execute step by step the expression ==temp1 := 1. temp2 := temp1 + 3.==
+Figure *@contextInterpretation2* describes the first steps of the interpretation. Try to draw or imagine the next steps.
+
+Some points:
+- The stack starts with two temporaries allocated: one for ==temp1== and one for ==temp2==.
+- We see that ==storeTemp== uses the value on the top of the stack to change the values of a temporary but it does not pop the stack value. This is why it is followed by a pop instruction. 
+
+
 
 !! Calls and Returns
 
-In the two first examples we described the instructions that work inside a function activation. Now let’s discuss the two interesting instructions, function calls and returns. They require the creation or the termination of a function activation.
+In the two first examples we described the instructions that work inside a function activation. Now let’s discuss the two interesting instructions, function calls and returns. They require the creation or the termination of a function activation i.e., a context as well as passing information from one context to its sender.
 
-!!! Function calls
-
-The call instruction creates a new context, pops the arguments from the top of the stack and copy them to the new context’s stack. It then proceeds execution in the freshly created context. Indeed, remember that prior to the call execution, the argument values are in top of the stack of the current context. Once the call is actually performed, the arguments are the first elements of the stack followed by the temporaries of the new function.
+!!! Function Calls
+The ""call"" instruction creates a new context, pops the ''argument values'' from the top of the stack and ''copy'' them to the new context’s stack. It then proceeds execution in the freshly created context. Indeed, remember that prior to the call execution, the argument values are in top of the stack of the current context. Once the call is actually performed, the arguments are the first elements of the stack followed by the temporaries of the new function.
 
 !!! Returns
+The ""returnTop"" instruction pushes the top of the stack of the active context on the top of stack of the sender context. It then terminates the active context and resumes execution in the sender context. This instruction navigates back from senders to senders.
 
-The returnTop instruction pushes the top of the stack of the active context on the top of stack of the sender context. It then terminates the active context and resumes execution in the sender context.
 
-!! Build a Context Interpreter
+!! Building a Naive Context Interpreter
 
-In this exercise, you will build a context Interpreter.
+Now it is time for you to code and understand by building step by step an interpreter. In this book, you will write several intepreters. 
+The first one (that you will build now) is a naive ""context"" interpreter. This means as you will see that each function invocations implies the creation of a separate context object and that values have to be passed to and from context chains. 
+
+The one we will explain you in the next chapter and that you will also implement is called ''Stack interpreter'' because it does not use separate context objects but a contiguous memory zone, a stack. Hence its name. 
+
+!!! Getting Prepared 
+
+
+In the next Chapter you will implement a naive context Interpreter. You will refine it in the subsequent Chapter. The coding setup is simple: 
 
 Open a Pharo image, load the package ""SmiLang"" you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
 
@@ -600,19 +621,57 @@ MCSmalltalkhubRepository
 
 The package SmiLang contains several tags each one grouping the classes corresponding to different aspects of SmiLang: compiler, context interpreter, stack interpreter, and tests.
 
-For now let us focus on the context interpreter and its companion test class ==SmiContextInterpreterTests==. A class ==SmiContext== is given as a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). You will have to define them. 
+!!! Key Classes
+
+For now let us focus on the context interpreter ==SmiContextInterpreter== and its companion test class ==SmiContextInterpreterTests==. A class ==SmiContext== is given as a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). You will have to define them. 
 
 The interpretation starts with a fake Context which holds flags. The interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, specifies the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
 
-The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. It is possible to look at the code and the compiled version of the examples.
+[[[
+SmiContextInterpreter >> initialContext
+		^ SmiContext new
+			programCounter: 0;
+			function: #stopFlag;
+			initialContext;
+			yourself
+]]]
 
-Here is the code of the first test, where you see the definition and instructions of the method under test and the actual test.
+[[[
+SmiContextInterpreter >> interpret: function
+	currentContext := self initialContext.
+	self newContextFor: function.
+	self interpret.
+	^ currentContext top
+]]]
+
+[[[
+SmiContextInterpreter >> interpret
+		[ currentContext function == #stopFlag ] whileFalse: [ 
+			currentContext programCounter: currentContext programCounter + 1. 
+			self interpretNextInstruction ]
+]]]
+
+Now you job starts. 
+[[[
+SmiContextInterpreter >> interpretNextInstruction
+	"should ask the current instruction to 'accept: self' to dispatch"
+	self shouldBeImplemented.
+	
+	Halt onCount: 1000. "You may use this code to halt on infinite loops"
+]]]	
+	
+
+The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. There are ordered by order of difficulty. 
+ It is possible to look at the code and the compiled version of the examples. Here is the code of the first test, where you see the definition and instructions of the method under test and the actual test.
 
 [[[eval=true
 stream << (SmiContextInterpreterTests>>#testExample1) sourceCode asPillarSourceCode.
 ]]]
 
-Good luck and have fun. In the next chapter you will implement an interpreter using a native stack. 
+Good luck and have fun. 
+
+
+
 
 ! Simple Stack Interpreter
 @StackInterpreter
