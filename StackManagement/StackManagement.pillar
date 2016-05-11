@@ -625,6 +625,8 @@ The package SmiLang contains several tags each one grouping the classes correspo
 
 For now let us focus on the context interpreter ==SmiContextInterpreter== and its companion test class ==SmiContextInterpreterTests==. A class ==SmiContext== is given as a possible implementation of a Context for SmiLang.  A ==SmiContextInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). You will have to define them. 
 
+The Smi interpreter you should build is a really simple one: It can only interpret function. 
+
 The interpretation starts with a fake Context which holds flags. The interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, specifies the function to call). The interpreter keeps interpreting instructions until it returns to the flagged context, which signals the end of the execution. It then returns the value computed.
 
 [[[
@@ -636,6 +638,8 @@ SmiContextInterpreter >> initialContext
 			yourself
 ]]]
 
+The entry point of the interpreter is the method ==interpret: aFunction==. It sets the bottom of the call stack, creates a new one for the given function and starts interpreting it. 
+
 [[[
 SmiContextInterpreter >> interpret: function
 	currentContext := self initialContext.
@@ -643,6 +647,8 @@ SmiContextInterpreter >> interpret: function
 	self interpret.
 	^ currentContext top
 ]]]
+
+Once everything is set up, the actual interpretation happens in the method ==interpret==.
 
 [[[
 SmiContextInterpreter >> interpret
