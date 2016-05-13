@@ -682,9 +682,12 @@ Good luck and have fun.
 ! Simple Stack Interpreter
 @StackInterpreter
 
-In this chapter, you will implement a stack interpreter. What is a stack interpreter compared to the previous one you implemented. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
+In this chapter, you will implement a stack interpreter. What is a stack interpreter compared to the previous one you implemented? Instead of considering contexts as separated objects, a stack interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
+The stack interpreter described in this chapter is a simple version of it, as it conceptually holds a single monolithic ''infinite stack''. The next chapter explains how to handle a finite stack (using stack pages). But before getting started, let us analyze the problems of the context interpreter. 
 
-The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". The next chapter of the book explains how to handle a finite stack. The context interpreter, as implemented in the previous chapter, has several issues:
+
+!! Inherent Limits of the Context Intepreter
+ The context interpreter, as implemented in the previous chapter, has several issues:
 - Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the cpu cache), it is in practice even slower.
 - A second problem is that Contexts are separate data structures and hence can be allocated by the host language, like C, far from each other. This implies that memory reads are spread in the memory and this is problematic for performance (mismatch with cpu caches). 
 - Another issue is that hardware-implemented cpu instructions like calls and returns are difficult or even impossible to use directly with contexts when in the future the developer will add a just-in-time compiler.
