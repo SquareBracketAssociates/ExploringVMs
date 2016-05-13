@@ -589,7 +589,7 @@ Some points:
 In the two first examples we described the instructions that work inside a function activation. Now let’s discuss the two interesting instructions, function calls and returns. They require the creation or the termination of a function activation i.e., a context as well as passing information from one context to its sender.
 
 !!! Function Calls
-The ""call"" instruction creates a new context, pops the ''argument values'' from the top of the stack and ''copy'' them to the new context’s stack. It then proceeds execution in the freshly created context. Indeed, remember that prior to the call execution, the argument values are in top of the stack of the current context. Once the call is actually performed, the arguments are the first elements of the stack followed by the temporaries of the new function.
+The ""call"" instruction creates a new context, pops the ''argument values'' from the top of the stack and ''copy'' them to the new context’s stack. It then proceeds execution in the freshly created context. Indeed, remember that prior to the call execution, the argument values are on top of the stack of the current context. Once the call is actually performed, the arguments are the first elements of the stack followed by the temporaries of the new function.
 
 !!! Returns
 The ""returnTop"" instruction pushes the top of the stack of the active context on the top of stack of the sender context. It then terminates the active context and resumes execution in the sender context. This instruction navigates back from senders to senders.
@@ -682,7 +682,7 @@ Good luck and have fun.
 ! Simple Stack Interpreter
 @StackInterpreter
 
-In this chapter, one has to build a stack interpreter. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
+In this chapter, you will implement a stack interpreter. What is a stack interpreter compared to the previous one you implemented. Instead of considering contexts as separated objects, this interpreter uses a contiguous memory space where function activations reuse arguments pushed on the stack instead of copying them over the new function activation.
 
 The interpreter is considered as simple as it conceptually holds a single monolithic ""infinite stack"". The next chapter of the book explains how to handle a finite stack. The context interpreter, as implemented in the previous chapter, has several issues:
 - Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the cpu cache), it is in practice even slower.
