@@ -554,7 +554,7 @@ Now let us look at two examples of execution.
 
 
 
-!! Example 1: Interpretation of ==1 + 2==
+!! Example 1: Interpreting a simple expression
 
 +Stack states at each pc during the interpretation of ==1 \+ 2==.>file://figures/contextInterpretation1-v2.pdf|width=100|label=contextInterpretation1+ 
 
@@ -571,7 +571,7 @@ Remember that the program counter (pc) points to the next instruction to be exec
 
 
 
-!!Example 2: Interpretation of ==temp1 := 1. temp2 := temp1 + 3.==
+!!Example 2: Interpreting a sequence of affectations
 
 +Stack states for the first pcs during the interpretation of ==temp1 := 1. temp2 := temp1 \+ 3==.>file://figures/contextInterpretation2.pdf|width=57|label=contextInterpretation2+
 

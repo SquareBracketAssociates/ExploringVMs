@@ -27,7 +27,7 @@ Let's create an object, look at the raw bytes in memory corresponding to the obj
 
 We will assume that we are on a 32 bits big endian machine for this example.
 
-For this purpose, a message send object is created corresponding to *1 \+ 2*.
+For this purpose, a message send object is created corresponding to ==1 + 2==.
 
 [[[
 MessageSend new
@@ -37,7 +37,7 @@ MessageSend new
 	yourself
 ]]]
 
-Once created, the virtual machine knows that the address of the object is, let's say, *0x00001464*
+Once created, the virtual machine knows that the address of the object is, let's say, ==0x00001464==
 
 If we look at the bytes around that memory location, we have something like that (32 bits are shown per line):
 
