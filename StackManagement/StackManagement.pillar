@@ -679,6 +679,11 @@ Good luck and have fun.
 
 
 
+
+
+
+
+
 ! Simple Stack Interpreter
 @StackInterpreter
 
@@ -688,19 +693,23 @@ The stack interpreter described in this chapter is a simple version of it, as it
 
 !! Inherent Limits of the Context Intepreter
  The context interpreter, as implemented in the previous chapter, has several issues:
-- Time is wasted when copying the arguments at each function call from the caller context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the cpu cache), it is in practice even slower.
-- A second problem is that Contexts are separate data structures and hence can be allocated by the host language, like C, far from each other. This implies that memory reads are spread in the memory and this is problematic for performance (mismatch with cpu caches). 
-- Another issue is that hardware-implemented cpu instructions like calls and returns are difficult or even impossible to use directly with contexts when in the future the developer will add a just-in-time compiler.
+- Time is wasted when copying the arguments at each function call from the caller (sender) context to the freshly created context. If one would design a context interpreter which does not copy the arguments, then a context needs access the arguments through the caller context. As the caller context may be far in memory (hence, maybe not on the CPU cache), it is in practice even slower.
+- A second problem is that Contexts are separate data structures and hence can be allocated by the host language, like C, far from each other. This implies that memory reads are spread in the memory and this is problematic for performance (mismatch with CPU caches). 
+- Another issue is that hardware-implemented CPU instructions like calls and returns are difficult or even impossible to use directly with contexts when in the future the developer will add a just-in-time compiler.
+
+The stack interpreter memory representation is then closer to the C counterpart and it is the foundation of Just-in-Time compiler.
 
 !! Call Stack
 
-In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack". As the stack is infinite and the first stack frame is tagged to mark the beginning of the stack, the interpreter does not need to check for stack underflow or overflow anywhere. The implementation of the stack is the fixed-array stack described in *@FixedSizedStack*, with an array that has conceptually an infinite size and in practice a size bigger that what the interpreter needs in the worst case. The interpreter will hold directly references to the stack pointer and the array holding the stack entries.
+In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack". As the stack is infinite and the first stack frame is tagged to mark the beginning of the stack, the interpreter does not need to check for stack underflow or overflow anywhere. 
+
+The implementation of the stack is the fixed-array stack described in Section *@FixedSizedStack*, with an array that has conceptually an infinite size and in practice a size bigger that what the interpreter needs in the worst case. The interpreter will hold directly references to the stack pointer and the array holding the stack entries which are structured in stack frame (a stack frame represents a region of contiguous stack corresponding to a function call - a 'transformed' context in the sense of the previous chapter).
 
 !!! Call stack representation
 
-The figure *@stack1* describes the representation of a native stack.
+Figure *@stack1* describes the representation of a native stack.
 
-+Representation of a native stack.>file://figures/stack1.pdf|width=73|label=stack1+
++Representation of a native stack.>file://figures/NewStackInterpreterExplanation|width=73|label=stack1+
 
 The native stack holds information relative to each context next to each other. Assuming that the stack grows down, the data up to a stack frame is related to the sender of the function activation and the data down is related the function called by the activation. 
 
