@@ -700,12 +700,12 @@ The stack interpreter described in this chapter is a simple version of it, as it
 The stack interpreter memory representation is then closer to the C counterpart and it is the foundation of Just-in-Time compiler.
 
 !! Call Stack
+SD: check the term native stack and either rename it or explain to what it refers to. 
+In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack". In the first version you will implement we consider the stack as infinite. As the stack is infinite and the first stack frame is tagged to mark the beginning of the stack, the interpreter does not need to check for stack underflow or overflow anywhere. 
 
-In one sentence, a stack interpreter is a context interpreter where all the contexts have been merged into a single stack called "call stack" or "native stack". As the stack is infinite and the first stack frame is tagged to mark the beginning of the stack, the interpreter does not need to check for stack underflow or overflow anywhere. 
+The implementation of the stack is the fixed-array stack described in Section *@FixedSizedStack*, with an array that has conceptually an infinite size and in practice a size bigger that what the interpreter needs in the worst case. The interpreter will hold directly references to the stack pointer and the array holding the call stack entries which are structured in stack frames. A stack frame is conceptually a 'transformed' context in the sense of the previous chapter. A stack frame represents a function activation. Stack frames are stored in a contiguous memory (also called in the following native stack). As we will see it allows to avoid copying arguments around. 
 
-The implementation of the stack is the fixed-array stack described in Section *@FixedSizedStack*, with an array that has conceptually an infinite size and in practice a size bigger that what the interpreter needs in the worst case. The interpreter will hold directly references to the stack pointer and the array holding the stack entries which are structured in stack frame (a stack frame represents a region of contiguous stack corresponding to a function call - a 'transformed' context in the sense of the previous chapter).
-
-!!! Call stack representation
+!!! Call Stack Representation
 
 Figure *@stack1* describes the representation of a native stack.
 
@@ -713,35 +713,43 @@ Figure *@stack1* describes the representation of a native stack.
 
 The native stack holds information relative to each context next to each other. Assuming that the stack grows down, the data up to a stack frame is related to the sender of the function activation and the data down is related the function called by the activation. 
 
-!!! Interpreter state
+!!! Interpreter State
 
-The interpreter, instead of knowing the active context, knows directly the state of the active function activation: 
+Instead of pointing to the active context, the interpreter points directly to the state of the active function activation. It knows the following information: 
 - the active function.
 - the pc (program counter) being executed.
 - the active frame pointer: it points to the beginning of the function activation in the native stack.
 - the stack pointer, it points to the top of the native stack and the top of the active stack frame (they are the same). Values will be pushed and popped there.
 
-!!! Stack frame representation
+
+
+!!! Stack Frame Representation
 
 In the native stack, we call ""stack frame"" a portion of the stack that represents a function activation (it corresponds to a context in the previous interpreter, except that the stack frame size is variable depending on how many values were pushed on stack before the activation of the next stack frame). Except the active stack frame, a stack frame is represented in order as follow:
-- ""Temporaries"": Allocated at stack frame creation, this space hold the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
+- ""Temporaries"": Allocated at stack frame creation, this space holdssuper the values of the temporary variables of the activation. The size of this space is known thanks to the ==numTemps== property of the function.
 - ""Spilled Values"": These values are pushed on top of the stack by some instructions to be consumed by one of the next instruction. The size of this zone is variable, depending on the current execution state. It has a size of 0 at stack frame activation time. Then, for example, if a ==pushSmi== instruction is performed, it will have a size of 1, as the Smi will be pushed on stack.
 - ""Arguments"": When calling a function, the interpreter pushes the arguments of the function called on the stack. On the contrary to the context interpreter, the arguments are never copied. Arguments are accessed in the caller stack frame relatively to the active stack frame frame pointer (this is detailed later in the chapter).
 - ""==Function==, ==pc== and ==frame pointer=="": Once a new function is activated, the interpreter can’t hold anymore the pc, the function and the frame pointer of the previous activation. It needs to hold the information related to the new stack frame created for the function being called. To remember the information, the interpreter pushes on stack the active function, pc and frame pointer. On return, the interpreter will set its values with the values on stack. The framePointer holds a reference to the beginning of the previous stack frame. 
 
-!!! Active stack frame
+!!! Active Stack Frame
 
-The active stack frame, i.e. the bottom stack frame, is different. The active function, pc and framepointer are directly held by the interpreter (they are not on stack). In practice, this avoids memory reads and writes if the interpreter variables (currentFunction, pc, framePointer) are in registers instead of in memory.
+The active stack frame, i.e., the bottom stack frame, is different. The active function, pc and framepointer are directly held by the interpreter (they are not on the stack). In practice, this avoids memory reads and writes if the interpreter variables (currentFunction, pc, framePointer) are in registers instead of in memory.
 
-!!! Concrete example: Activation of the function add:to:
+!!! Concrete Example: Activation of the Function add:to:
 
-The figure *@stack2* describes the same example than for the context interpreter in Section 2. Don’t hesitate to compare both architectures if you don’t understand everything.
+Figure *@stack2* describes the same example than for the context interpreter in Figure *@context2*. Don’t hesitate to compare both architectures if you don’t understand everything.
 
 [[[eval=true
 stream << (SmiExamples>>#add:to:) sourceCode asPillarSourceCode.
 ]]]
 
-+Example of a native stack.>file://figures/stack2.pdf|width=76|label=stack2+
+The function ==add:to:== is invoked in particular by the function ==example07TempAndCallAndCallArgs== whose definition is given below:
+
+[[[eval=true
+stream << (SmiExamples>>#example07TempAndCallAndCallArgs) sourceCode asPillarSourceCode.
+]]]
+
++Example of a native stack for the call to ==add:to:== in ==example07TempAndCallAndCallArgs==.>file://figures/NewStackInterpreterExampleAddto.pdf|width=76|label=stack2+
 
 The interpreter holds:
 - A reference to the function being executed, the function ==add:to:==.
