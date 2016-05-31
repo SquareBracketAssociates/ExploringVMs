@@ -757,21 +757,21 @@ The interpreter holds:
 - The frame pointer corresponding to the beginning of the current stack frame for the activation of the method ==add:to:==.
 - The stack pointer, which is the last value being used on stack and the top of the active stack frame.
 
-The active stack frame starts with a framePointer which refers to the framePointer of the previous stack frame, i.e., the beginning of the previous stack frame. For example, in figure *@stack2* the interpreter frame pointer points to slot 9 which refers to the previous stack frame start.
+The active stack frame starts with a framePointer which refers to the framePointer of the previous stack frame, i.e., the beginning of the previous stack frame. For example, in Figure *@stack2* the interpreter frame pointer points to slot 9 which refers to the previous stack frame start.
 
-!! Temporary access
+!! Temporary Variable Access
 
-The interpreter assumes that the compiler forbids writing into the function arguments (compilation error). Hence, the store into temporary variable instruction remains simple as it assumes the temp index is the index of a temporary variable. Remember that the temporaries are now stored at the beginning of the stack frame (just after the frame pointer).
+The interpreter assumes that the compiler forbids writing into the function arguments (compilation error). Hence, the store into temporary variable instruction (==storeTemp==) remains simple as it assumes the temp index is the index of a temporary variable. Remember that the temporaries are now stored at the beginning of the stack frame (just after the frame pointer).
 
-The ==pushTemp== instruction is different. Depending on the tempIndex and the value of numArgs in the function, two cases are found:
+The ==pushTemp== instruction is different. Depending on the ==tempIndex== value and the value of ==numArgs== of the function, two cases exist:
 
-- ""The tempIndex corresponds to an argument."" Its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of argument and add the tempIndex to access the correct field, as shown on figure *@tempAccess1*.
+- ""The tempIndex corresponds to an argument."" Its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of arguments and add the tempIndex to access the correct field, as shown on Figure *@tempAccess1*.
 
-+Accessing the value of an argument.>file://figures/tempAccess1.pdf|width=77|label=tempAccess1+
++Accessing the value of an argument.>file://figures/tempAccess1.pdf|width=57|label=tempAccess1+
 
-- ""The tempIndex corresponds to a temporary variable."" Hence we can access the value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame, as shown on figure *@tempAccess2*.
+- ""The tempIndex corresponds to a temporary variable."" Hence we can access the value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame, as shown on figure *@tempAccess2*. We have to substract the number of arguments because if you remember in the context interpreter the arguments are pushed first and then the temporaries. Since the compiler did not change and that in this implementation the arguments are stored in the previous stack frame we have to substract their number to get the right temporaries offset. 
 
-+Accessing the value of a temporary variable.>file://figures/tempAccess2.pdf|width=73|label=tempAccess2+
++Accessing the value of a temporary variable.>file://figures/tempAccess2.pdf|width=53|label=tempAccess2+
 
 !! Call Instruction
 
