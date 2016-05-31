@@ -43,6 +43,9 @@ Thanks to Stéphane Ducasse and Philippe Back for their contributions to this pa
 
 Thanks to Cyril Ferlicot, Christophe Demarey and Vincent Blondeau for their reviews and runs of the tutorial.
 
+
+
+
 ! Theory: Stack Implementation
 @StackImplementation
 
@@ -54,9 +57,9 @@ In high-level languages such as Pharo, people usually use ==OrderedCollection== 
 
 The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are ""not"" part of a conventional stack APIs.
 
-!! Naive Implementations
+We will start to look at naive implementations (linked-list and array based) and after advanced ones (fixed-sized stack, copying stack and stack page stack).
 
-!!! Linked List Implementation
+!! Naive Implementation: Linked List 
 @LLStack
 
 The first naive implementation is to represent a stack as a linked list. The stack keeps a reference to the top element, and each element keeps a reference to the previous element on stack, or nil if it's the bottom element.
@@ -113,7 +116,7 @@ It has however several big problems:
 
 This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, this design inspired a better solution as described in one of the following section.
 
-!!! Array Implementation
+!! Naive Implementation: Array 
 @arrayImplStack
 
 The other naive implementation of a stack is composed of a fixed-sized array and a stackPointer. The array holds the values pushed on the stack, while stackPointer holds the index of the top of the stack.
@@ -178,9 +181,9 @@ The advanced implementation are directly inspired from the array implementation.
 - How to handle stack overflow so that the stack can dynamically grow without wasting too much memory and execution time.
 - How to remove the stack overflow and underflow checks in the ==push== and ==pop== operations to improve their performance.
 
-The next subsection discusses the case where stack overflow and underflow can't happen. The last two subsections deal with dynamic growth and shrink of the stack.
+Next section discusses the case where stack overflow and underflow can't happen. The last two sections deal with dynamic growth and shrink of the stack.
 
-!!! Fixed-sized Stack
+!! Advanced Implementations: Fixed-sized Stack
 @FixedSizedStack
 
 For this implementation, we assume that the operations performed on the stack are known in advance so the program can know for sure the maximum size of the stack that will used. Hence, an array of the maximum expected size can be allocated to avoid stack overflows. 
@@ -208,7 +211,7 @@ This implementation is the most efficient possible (modulo some machine specific
 
 In the rest of the book, this implementation of the stack will be referred as the ""fixed-sized stack"".
 
-!!! Copying Stack
+!! Advanced Implementations: Copying Stack
 
 This is the approach used by ==OrderedCollection== in Pharo. Growing the stack implies the creation of a larger array with the previous array elements. Here is possible code:
 
@@ -235,7 +238,7 @@ Firstly, the stack grows but never shrinks, leading to huge memory footprint in 
 
 Secondly, the array used for the internal representation of the stack has a different size depending on the size the stack had when it overflowed the last time. Hence, it is likely that once the stack has grown, the previous array used will need to be garbage collected and can't be directly reused by another instance of stack which would need an array of the same size.
 
-!!! Stack pages stack
+!! Advanced Implementations: Stack Page Stack
 @StackPageStack
 
 This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in Section *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there. 
@@ -853,13 +856,15 @@ Good luck and have fun !
 ! Stack pages
 @StackPages
 
+In this chapter we will improve previous interpreter limit: to need infinite stack. We will introduce stack pages - a linked list of pages. 
+
 !! Problem
 
 The Stack interpreter built in the previous chapter is very nice as it introduced many concepts. It has however a critical flaw: the stack is considered as infinite. An infinite stack is possible theoretically but not in practice as you need to specify to the computer a size to allocate. This size can’t be too big because if the program uses multiple processes, each process requires a separate stack. 
 
 !! Solution
 
-A common solution is to split the stack into stack pages of limited fixed size, as described in the subsection *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuse the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
+A common solution is to split the stack into stack pages of limited fixed size, as described in S ection *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuse the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
 - Raise a StackOverflow error.
 - Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
 
