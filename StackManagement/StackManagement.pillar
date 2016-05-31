@@ -866,15 +866,15 @@ The Stack interpreter built in the previous chapter is very nice as it introduce
 
 !! Solution
 
-A common solution is to split the stack into stack pages of limited fixed size, as described in S ection *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuse the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
+A common solution is to split the stack into stack pages of limited fixed size, as described in Section *@StackPageStack*. When the stack page overflows, the interpreter switches to a new stack page. All the stack pages are created at interpreter start-up and there are a fixed limited number of stack pages available. The interpreter never allocates new stack pages or free them, it instead reuses the pre-allocated stack pages. Once all the pages are full, different strategies exist depending on the language you want to implement:
 - Raise a StackOverflow error.
 - Serialize a few stack page to free them, and once a serialized stack page needs to be used again materialize it.
 
-To avoid checking at each ==push== instruction if the stack page overflows or not, the interpreter uses the ==maxStackSize== field of the function executed to predict at stack frame creation time if the stack is going to overflow or not during the function execution. If a stack overflow is going to happen, the interpreter switches to a new stack page. There is no such thing as a stack frame split between two pages, it cannot happen.
+To avoid checking at each ==push== instruction if the stack page overflows or not, the interpreter uses the ==maxStackSize== (SD: this is not called maxStackSize but stackSize) field of the function executed to predict at stack frame creation time if the stack is going to overflow or not during the function execution. If a stack overflow is going to happen, the interpreter switches to a new stack page. There is no such thing as a stack frame split between two pages, it cannot happen.
 
 On the contrary to the simple stack with stack pages described in subsection *@StackPageStack*, each stack page can have several unused fields. Indeed, the interpreter switches to a new stack page if there is not enough room for the next function execution, even if there are a few free fields left on the active stack page. 
 
-This complexifies a bit the stack page management, as when popping across stack pages, the stack pointer needs to be restored to the correct field in the previous stack page which is not necessarily the top field of the page. To know what value the stack pointer has to be restored to, the stack has to keep additionnal metadata at the beginning of each page. The simple scheme described in subsection *@StackPageStack* only keeps the reference to the previous stack page at the beginning of each page, whereas this implementation needs to keep in addition the stack pointer value to restore.
+This complexifies a bit the stack page management, as when popping across stack pages, the stack pointer needs to be restored to the correct field in the previous stack page which is not necessarily the top field of the page. To know what value the stack pointer has to be restored to, the stack has to keep additionnal metadata at the beginning of each page. The simple scheme described in Section *@StackPageStack* only keeps the reference to the previous stack page at the beginning of each page, whereas this implementation needs to keep in addition the stack pointer value to restore.
 
 !!! Implementation
 
@@ -903,6 +903,12 @@ stackPageOverflow: stackPage
 
 When a new stack page is required, if the current stack page has already overflowed, the interpreter decides to copy a certain number of stack frame to new page to make call and return across stack pages less common. The number of stack frame to copy depends on the number of time the stack page has overflowed and is bounded by a maximum value. This cheap strategy makes calls and returns across stack pages uncommon.
 
+
+
+
+
+
+
 ! Naive closures in the Context Interpreter
 @ClosureContextInterpreter
 
@@ -910,15 +916,15 @@ When a new stack page is required, if the current stack page has already overflo
 
 In this chapter, the reader will introduce closures the context interpreter. This chapter deals with the closure implementation and does not explain what is a closure. If you don't know what is a closure, please read first documentation available on the internet about it, such as the chapter ""14. Blocks: a Detailed Analysis"" of the free online book ""Deep into Pharo"".
 
-A closure is an object or a data structure that references a function and its enclosing environment. In this implementation, the function is anonymous and the enclosing environment is the context in which the closure was created, that we call the closure’s outer context, as represented on figure *@closure*. 
+A closure is an object or a data structure that references a function and its enclosing environment. In this implementation, the function is anonymous and the enclosing environment is the context in which the closure was created, that we call the closure’s outer context, as represented on Figure *@closure*. 
 
 +Closure representation.>file://figures/closure.pdf|width=62|label=closure+
 
-In addition to regular function, closure’s function activation (contexts representing closure activations) have a reference to the closure they activated, as emphasized on figure *@closureContext*. 
+In addition to regular function, closure’s function activation (contexts representing closure activations) have a reference to the closure they activated, as emphasized on Figure *@closureContext*. 
 
 +Context versus Closure Context.>file://figures/closureContext.pdf|width=62|label=closureContext+
 
-If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. The list of outer context from the closure’s direct outer context to the first context which is not a closure activation is called ""outer context chain"". Such an outer context chain is represented on figure *@OuterContextChain*.The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
+If the closure is defined in another closure, then the closure’s outer context is a closure context, which has itself a closure with an outer context. The list of outer context from the closure’s direct outer context to the first context which is not a closure activation is called ""outer context chain"". Such an outer context chain is represented on Figure *@OuterContextChain*. The last context of the chain is called the closure’s ""home context"". If the closure is not nested in another closure, then the closure outer context is its home context.
 
 +Outer Context chain.>file://figures/OuterContextChain.pdf|width=63|label=OuterContextChain+
 
@@ -958,7 +964,7 @@ We will consider that it is the developer responsability to call the primitive =
 
 If ==value== is called on a Smi or if a primitive operation on Smis such as ==+== is called with a closure as operand, the interpreter raises an error and stops executing code. 
 
-In a real system, different solutions exists to avoid such runtime errors. For example, a type system allows the compiler to raise a compilation error if a type missmatch is detected. Alternatively, in dynamically-typed languages like Smalltalk, the runtime executes a fall-back routine when a primitive operation fails to handle such problems.
+In a real system, different solutions exist to avoid such runtime errors. For example, a type system allows the compiler to raise a compilation error if a type missmatch is detected. Alternatively, in dynamically-typed languages like Smalltalk, the runtime executes a fall-back routine when a primitive operation fails to handle such problems.
 
 !!! Extra features of closure activations
 
