@@ -763,15 +763,21 @@ The active stack frame starts with a framePointer which refers to the framePoint
 
 The interpreter assumes that the compiler forbids writing into the function arguments (compilation error). Hence, the store into temporary variable instruction (==storeTemp==) remains simple as it assumes the temp index is the index of a temporary variable. Remember that the temporaries are now stored at the beginning of the stack frame (just after the frame pointer).
 
-The ==pushTemp== instruction is different. Depending on the ==tempIndex== value and the value of ==numArgs== of the function, two cases exist:
+The ==pushTemp== instruction is different. Depending on the ==tempIndex== value and the value of ==numArgs== of the function, two cases exist whether the tempIndex correspond to an argument or to a temporary variable. 
 
-- ""The tempIndex corresponds to an argument."" Its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of arguments and add the tempIndex to access the correct field, as shown on Figure *@tempAccess1*.
+!!! TempIndex for Argument
+When the tempIndex corresponds to an argument, its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of arguments and add the tempIndex to access the correct field, as shown on Figure *@tempAccess1*.
 
-+Accessing the value of an argument.>file://figures/tempAccess1.pdf|width=57|label=tempAccess1+
++Accessing the value of an argument (arguments are stored in the previous frame before the saved information).>file://figures/tempAccess1.pdf|width=57|label=tempAccess1+
 
-- ""The tempIndex corresponds to a temporary variable."" Hence we can access the value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame, as shown on figure *@tempAccess2*. We have to substract the number of arguments because if you remember in the context interpreter the arguments are pushed first and then the temporaries. Since the compiler did not change and that in this implementation the arguments are stored in the previous stack frame we have to substract their number to get the right temporaries offset. 
 
-+Accessing the value of a temporary variable.>file://figures/tempAccess2.pdf|width=53|label=tempAccess2+
+!!! TempIndex for a Temporary Variable.
+When the tempIndex corresponds to a temporary variable,  we can access the corresponding value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame, as shown on figure *@tempAccess2*. We have to substract the number of arguments because if you remember in the context interpreter the arguments are pushed first and then the temporaries. Since the compiler did not change and that in this implementation the arguments are stored in the previous stack frame we have to substract their number to get the right temporaries offset. 
+
++Accessing the value of a temporary variable (arguments are in the previous frame but the compiler emit bytecode as if they were not).>file://figures/tempAccess2.pdf|width=53|label=tempAccess2+
+
+
+Note that in Pharo, the bytecode compiler works the same way than the presented scheme: it emits bytecodes working in the case of explicit contexts and the JIT optimizes this code by using the knowledge that contexts are converted into stack frames.
 
 !! Call Instruction
 
@@ -781,9 +787,13 @@ The call instruction works as follow:
 - Pushes the pc, the active function and the frame pointer on stack.
 - Sets up the stack zone after the new frame pointer with only slots for temporary variables (no slots for arguments as they are accessed from the caller frame). It usually implies to update the stackPointer and set the temporary variable fields to a default value (0 in our case).
 
-!! Return instructions
+!! Return Instruction
 
-The return instruction has to set the execution to the previous stack frame execution state. This implies popping the stack up to the previous frame pointer, then popping and restoring the previous active function, frame pointer and pc, and lastly popping the arguments of the function call. In addition, it needs to push the returned result on stack.
+The return instruction has to set the execution to the previous stack frame execution state. This implies:
+- popping the stack up to the previous frame pointer, 
+- then popping and restoring the previous active function, frame pointer and pc, 
+- and lastly popping the arguments of the function call. I
+In addition, it needs to push the returned result on stack.
 
 !! Build a stack interpreter
 
@@ -791,13 +801,24 @@ In this exercise you will build a Stack Interpreter.
 
 Open a Pharo 4 image, load the package ==SmiLang== you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
 
-Go to the package tag ==SmiLang>>Stack interpreter==. A ==SmiStackInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+Go to the package tag ==SmiLang-Stack interpreter==. A ==SmiStackInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
 
-The interpretation starts with a fake stack frame which holds flags. The Interpreter then calls a function (the public API, ==#interpret:==, specified in the public method protocol, defines the function to call). The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
+The interpretation starts with a fake stack frame which holds flags. The Interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, defines the function to call). The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
 
 The ==SmiStackInterpreterTests== have to pass to proceed to the next chapter. 
 
 Good luck and have fun !
+
+
+
+
+
+
+
+
+
+
+
 
 ! Stack pages
 @StackPages
