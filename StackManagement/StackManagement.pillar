@@ -792,18 +792,48 @@ The call instruction works as follow:
 The return instruction has to set the execution to the previous stack frame execution state. This implies:
 - popping the stack up to the previous frame pointer, 
 - then popping and restoring the previous active function, frame pointer and pc, 
-- and lastly popping the arguments of the function call. I
+- and lastly popping the arguments of the function call.
 In addition, it needs to push the returned result on stack.
 
-!! Build a stack interpreter
+!! Build a Stack Interpreter
 
-In this exercise you will build a Stack Interpreter.
+In this exercise you will build a Stack Interpreter, i.e., a bytecode interpreter using a stack instead of contexts.
 
-Open a Pharo 4 image, load the package ==SmiLang== you can find on *http://smalltalkhub.com/mc/ClementBera/3DaysVM/main*.
+The package tag ==SmiLang-Stack interpreter== contains the skeleton code. A ==SmiStackInterpreter== class skeleton is given, but many methods are not 
+implemented (they only hold ==self shouldBeImplemented==). 
 
-Go to the package tag ==SmiLang-Stack interpreter==. A ==SmiStackInterpreter== class skeleton is given, but many methods are not implemented (they only hold ==self shouldBeImplemented==). 
+The interpreter is with a new stack page which represents a contiguous 
+[[[
+SmiStackInterpreter >> initialize
 
-The interpretation starts with a fake stack frame which holds flags. The Interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, defines the function to call). The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
+	super initialize.
+	currentStackPage := self newStackPage.
+	stackPointer := 0.
+]]]
+
+[[[
+SmiStackInterpreter >> newStackPage
+	^ Array new: self stackPageSize
+]]]
+
+The interpretation starts with a fake stack frame which holds flags. 
+
+[[[
+SmiStackInterpreter >> interpret
+	[ currentFunction == #functionFlag ] whileFalse: [ 
+		programCounter := programCounter + 1. 
+		self interpretNextInstruction ]
+]]]
+
+The Interpreter then calls a function (the public API, ==interpret:==, specified in the public method protocol, defines the function to call).
+
+[[[
+SmiStackInterpreter >> interpretNextInstruction
+	"Asks the currentInstruction to accept self"
+	...
+]]]
+
+ The interpreter keeps interpreting instructions until it returns to the flagged stack frame, which signals the end of the execution. It then returns the computed value.
 
 The ==SmiStackInterpreterTests== have to pass to proceed to the next chapter. 
 
