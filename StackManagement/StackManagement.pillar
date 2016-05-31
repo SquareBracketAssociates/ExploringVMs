@@ -253,7 +253,7 @@ In fact, this implementation has both the advantages of the array implementation
 
 Here follows a possible implementation where the first element of the stack page (an Array) refers to the previous stack page or nil as shown in *@stackpageEx1*.
 
-+Example of successive operations on a stack with stack pages.>file://figures/stackpageEx1.pdf|width=77|label=stackpageEx1+ 
++Example of successive operations on a stack with stack pages.>file://figures/stackpageEx1.pdf|width=70|label=stackpageEx1+ 
 SD: stackpointer should be 2 in step3.
 
 
@@ -340,7 +340,7 @@ We show some  code pushing and popping elements on a stack implemented with stac
 # The value ==$F== is popped from the stack. After popping, there is still a value on the stack page, hence the pop operation is done as the naive array implementation described in Section *@arrayImplStack*.
 # The value ==$E== is popped from the stack. This time, after popping, there are no more values on the stack page. Hence, the stack page is freed. The first value of the page is used to change the reference of the stack page (==array== field) in the stack to the previous stack page. The stack pointer is updated so the top of the stack is the top of the previous stack page.
 
-+Example of successive operations on a stack with stack pages.>file://figures/stackpageEx2.pdf|width=77|label=stackpageEx2+ 
++Example of successive operations on a stack with stack pages.>file://figures/stackpageEx2.pdf|width=70|label=stackpageEx2+ 
 
 In this naive Example, stack pages of size 5 were used. It implies that 4 out of 5 ==push== and ==pop== operations are very efficient because they are done within a stack page, and 1 out of 5 operation is less efficient because it needs to handle the stack page switch. At worst, the stack wastes a stack page of memory, 3 fields in this case, if the last stack page is almost empty as in step 3. In addition, there are some memory overhead due each stack page needing to keep a reference to the previous stack page or ==nil==. 
 
@@ -768,13 +768,15 @@ The interpreter assumes that the compiler forbids writing into the function argu
 
 The ==pushTemp== instruction is different. Depending on the ==tempIndex== value and the value of ==numArgs== of the function, two cases exist whether the tempIndex correspond to an argument or to a temporary variable. 
 
+To distinguish between temporaries and arguments, you have to remember that the compiler emits index for arguments then for temporaries. Therefore if a tempindex is larger than the function arguments, it is for a temporary. 
+
 !!! TempIndex for Argument
 When the tempIndex corresponds to an argument, its value is accessed in the caller frame relatively to the active frame pointer. The previous frame has at its end the argument values, its function and its pc. The interpreter needs to substract 3 from the stack pointer to reach the zone in the previous stack frame holding arguments, then substract the number of arguments and add the tempIndex to access the correct field, as shown on Figure *@tempAccess1*.
 
 +Accessing the value of an argument (arguments are stored in the previous frame before the saved information).>file://figures/tempAccess1.pdf|width=57|label=tempAccess1+
 
 
-!!! TempIndex for a Temporary Variable.
+!!! TempIndex for a Temporary Variable
 When the tempIndex corresponds to a temporary variable,  we can access the corresponding value relatively to the framepointer. We need to add the tempIndex to the framePointer and substract the number of arguments as they are stored on the caller frame, as shown on figure *@tempAccess2*. We have to substract the number of arguments because if you remember in the context interpreter the arguments are pushed first and then the temporaries. Since the compiler did not change and that in this implementation the arguments are stored in the previous stack frame we have to substract their number to get the right temporaries offset. 
 
 +Accessing the value of a temporary variable (arguments are in the previous frame but the compiler emit bytecode as if they were not).>file://figures/tempAccess2.pdf|width=53|label=tempAccess2+
