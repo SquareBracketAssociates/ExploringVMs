@@ -1,9 +1,8 @@
-! Overview of the Kernel Construction
+This part of the book deals with Kernel construction for small object languages.
 
-Every language has some kind of bootstrap:
-st80 -> Basic
-other written C/C++
-other Java previous version (matters to keep being able to reconstruct things)
+To start-up, every programming language needs to initialize a minimum set of libraries able to be able to do the basic things needed for a system to run. For example, most programming languages cannot run without the integer arithmetic functions. Start-up implies the loading of those librairies in memory. In the case of a pure object language, like the restricted Smalltalk we are working with, the start-up requires the initialization of a set of objects (including classes and methods) required to run a minimal runtime.
+
+This part of the book deals with two problems. Firstly, it describes a minimal kernel with around 30 classes required to run the restricted Smalltalk. It is very important for the reader to understand how all the core classes work, because in the next part of the book one will need to debug the kernel code from the virtual machine point of view. However, the virtual machine works with a set of objects, represented in a specific format in memory. So secondly, this part of the book discusses how to bootstrap from the kernel sources into an image, also called a snapshot, which represents a memory dump of the objects corresponding to the kernel bootstrap. To start-up, the virtual machine can just load the snapshot into memory and execute some code precised in the header of the snapshot.
 
 build the minimum snapshot.
 
@@ -25,7 +24,7 @@ The memory representation presented is the one you will implement for your langu
 
 Let's create an object, look at the raw bytes in memory corresponding to the object and understand what they mean.
 
-We will assume that we are on a 32 bits big endian machine for this example.
+We will assume that we are on a 32 bits little endian machine for this example.
 
 For this purpose, a message send object is created corresponding to ==1 + 2==.
 
@@ -95,30 +94,35 @@ More compact structure: iv and variable and bytes, more compact compiled method,
 
 ! Designing a 30 classes Kernel
 
+In this section, a 30 classes minimal kernel is proposed. These kernel will be the core of the restricted Smalltalk run.
+
 !! Elements needed in the Kernel
 
-build a simple for self hosting runtime kernel:
+Multiple things are required to have a Smalltalk system running:
+- nil, true and false.
+- the class Class (which instances are the classes in the system).
+- everything needed for a look-up to work: method dictionary, association, symbol, compiledCode, literals (numbers, arrays, ...).
+- everything needed to run code: context, closure, compiled code and message for #doesNotUnderstand:.
+- a set of objects known by both the VM and the image, in Smalltalk, the special object array
+- a global dictionary to access global variables (classes, etc)
 
-a number and nil / true / false
-class, => method dict => array and association and symbol and compiledCode => literals and ByteArray and Array 
-Minimum for running code: context, closure, compiled code, message for dnu.
-link between VM and image + global accesses: Smalltalk => special object array and global dict holding
+We will add one extra class, OrderedCollection (called sometimes list) which is essential to build anything. In fact, for a widely used language, the minimum kernel bootstrapped needs to be able to load new code. Loading new code implies getting data from a server or a file and a compiler. Such tools are not that easy to build on a small kernel like the one used, so maybe more classes are needed.
 
-We will add one extra class, OrderedCollection (= list) which is essential to build anything. In fact minimum kernel bootstrapped needs to be able to load code. Build a code load implies a few things: getting data from a server or from a file, a compiler, all these tools are difficult to build on micro kernel so one may need more.
+%Discussion on kernel modularity. => our microkernel could be viable on embedded device, even could be too big due to OrderedCollection and Strings and nil. A few classes could be removed / compressed => run with behaviors not classes as cross compiled and no name. Debugging become tough (attach metadata)
 
-Discussion on kernel modularity. => our microkernel could be viable on embedded device, even could be too big due to OrderedCollection and Strings and nil. A few classes could be removed / compressed => run with behaviors not classes as cross compiled and no name. Debugging become tough (attach metadata)
+%This kernel was designed to be able to run on 64k so one can build a 16b mem manager easily if he wants to.
 
-This kernel was designed to be able to run on 64k so one can build a 16b mem manager easily if he wants to.
+Let's look at the micro kernel proposed in *@MicroKernel*.
 
 +Micro Kernel.>file://figures/MicroKernel.pdf|width=100|label=MicroKernel+
 
-Maybe we add later HashedCollection and Set if it feels too difficult to explain Dictionary at once.
+%Maybe we add later HashedCollection and Set if it feels too difficult to explain Dictionary at once.
 
-Discussion:
+%Discussion:
 
---> Is a Dictionary and method dict same class a good idea ?
-Number of memory reads compared to implemenation of literal variables
-memory footprint.
+%--> Is a Dictionary and method dict same class a good idea ?
+%Number of memory reads compared to implemenation of literal variables
+%memory footprint.
 
 Core libraries and VM support
 => they depend on each other, typically maintained by same crew. Performance lies a lot with kernel libraries. Looking at each bytecode / machine code. Discuss intrinsec in Dart aka optimization primitives
