@@ -660,7 +660,7 @@ SmiContextInterpreter >> interpret
 			self interpretNextInstruction ]
 ]]]
 
-Now you job starts. 
+Now your job starts. 
 [[[
 SmiContextInterpreter >> interpretNextInstruction
 	"should ask the current instruction to 'accept: self' to dispatch"
@@ -670,7 +670,7 @@ SmiContextInterpreter >> interpretNextInstruction
 ]]]	
 	
 
-The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. There are ordered by order of difficulty. 
+The class ==SmiContextInterpreterTests== defines a set of tests that have to pass. They are ordered by order of difficulty. 
  It is possible to look at the code and the compiled version of the examples. Here is the code of the first test, where you see the definition and instructions of the method under test and the actual test.
 
 [[[eval=true
