@@ -7,23 +7,23 @@ load.
 Smalltalk snapshot: true andQuit: false.
 ]]]
 
-! Overview of the Bytecode Compiler
+!! Overview of the Bytecode Compiler
 
 A Bytecode Compiler is a tool that converts the source code of a method or a closure to a representation executable by the virtual machine.
 
 In this part of the book, the reader has to implement 3 successives bytecode compilers for a restrictive Smalltalk (As shown in the following subsection, it is almost a complete Smalltalk System). To proceed to the next sections, the reader has to implement at least the 2 first compilers. Although the last compiler adds interesting concepts, its implementation is optional.
 
-!!! Outline
+!!!! Outline
 
 - The first compiler can only compile methods and is built over 3 sections (sections *@SimpleCompil*, *@VarCompil* and *@MethodCompil*).
 - The second one has support for closures, as they were implemented for the ''context'' interpreter in the previous part of the book.
 - The last and optional compiler introduces inlined compilation of control flow operations.
 
-!! Overall compiler overview
+!!! Overall compiler overview
 
 what a compiler does blabla Source code -> AST -> Bytecode / compiled code
 
-!! Restrictive Smalltalk
+!!! Restrictive Smalltalk
 
 The language we will work on from this part of the book to the end of the book is a simple object language. Everything is an object as in Smalltalk or Ruby. Every method call is a virtual call (no static call). In the example we will use a dynamically and strongly typed language, but the logic could also apply to a statically and strongly typed language. The language will use classes with single inheritance, though it is possible to add multiple inheritance if the read is interested.
 
@@ -34,11 +34,11 @@ If you are familiar with Smalltalk, the language built is a Smalltalk with the s
 - Numbered primitives are available but not named primitives
 - There are no Class Variable nor Shared Pool nor Pool Dictionnaries, by default those variables are globals.
 
-!! Abstract Syntax Tree proposed
+!!! Abstract Syntax Tree proposed
 
 Simple and clean, explain cleaned
 
-!! CompiledCode format
+!!! CompiledCode format
 
 We call ==CompiledCode== the class which instances hold code executable by the virtual machine. The virtual machine built will execute the compiled code using a bytecode interpreter, very similar to the closure context interpreter built in the previous part of the book.
 
@@ -61,33 +61,33 @@ stream << '[[[' << String cr << RSEncoder comment << String cr << ']]]'
 
 typically write in hexa...
 
-! Compilation of simple Methods
+!! Compilation of simple Methods
 @SimpleCompil
 
 Compilation of examples 1 to 4.
 
-!! Compiling Special Variables
+!!! Compiling Special Variables
 
 thisContext, self super
 
-!! Compiling Returns
+!!! Compiling Returns
 
 ret
 
-!! Compiling Methods and Sequences
+!!! Compiling Methods and Sequences
 
 simple things
 
-!! Compiling Literals
+!!! Compiling Literals
 
 lit
 
-! Compilation of Variable Accesses
+!! Compilation of Variable Accesses
 @VarCompil
 
 Compilation of method 5 to 10.
 
-!! Variable Scopes and Lookups
+!!! Variable Scopes and Lookups
 
 +Variable scopes.>file://figures/MethodScopes.pdf|width=35|label=MethodScopes+
 
@@ -96,30 +96,30 @@ Compilation of method 5 to 10.
 normal variables : building the scopes
 Global>>instance>>Temp
 
-!! Compiling Assignments
+!!! Compiling Assignments
 
 assign
 
-! Full Method Compiler
+!! Full Method Compiler
 @MethodCompil
 
 now compile everything but closures
 
 up to example 13
 
-!! Compiling Message Sends
+!!! Compiling Message Sends
 
 regular and super sends
 
-!! Compiling Primitives
+!!! Compiling Primitives
 
 primitive numbered or 0
 
-! Closure Compiler
+!! Closure Compiler
 
 up to example 18
 
-!! Compiling Variable Accesses
+!!! Compiling Variable Accesses
 
 +Variable scopes.>file://figures/BlockScopes.pdf|width=50|label=BlockScopes+
 
@@ -127,65 +127,65 @@ new scopes for temps
 
 remote temps
 
-!! Compiling a closure
+!!! Compiling a closure
 
 cl
 
-! Static Optimizations of Control Flow Operations
+!! Static Optimizations of Control Flow Operations
 
 all examples => up to 24
 
 cant optimize much blabla
 
-!! Inlining Finite Loops
+!!! Inlining Finite Loops
 
 the example of #to:do: & #to:by:do:
 
-!! Inlining Branches
+!!! Inlining Branches
 
 the example of ifTrue:, ifTrue:ifFalse:, ifFalse:ifTrue:, ifFalse:
 
-! What makes a good compiler ?
+!! What makes a good compiler ?
 
 blabla
 
-!! Handling Compilation error and warnings
+!!! Handling Compilation error and warnings
 
 example
 
-!! Compilation time
+!!! Compilation time
 
 why these 2 are first ?
 
 LLVM -=> fast to compile and good error handling, 10% slower in generated code and Apple moved.
 
-!! Generated code execution time
+!!! Generated code execution time
 
 not much we can do in the bytecode compiler though :(
 
-!! Generated code execution memory footprint
+!!! Generated code execution memory footprint
 
 often both later are the same as memory access are the more time consuming operation and there are caches.
 
-! Discussion
+!! Discussion
 
 blabla
 
-!! Handling the hidden semantics
+!!! Handling the hidden semantics
 
 returns and nil blocks.
 
-!! Temp vectors
+!!! Temp vectors
 
 compiling for StackInterpreter
 
 no implementation :( in exercise, though you can do it.
 
-!! Static versus runtime optimizations
+!!! Static versus runtime optimizations
 
 Aggressive specialization vs memory footprint
 
-!! Optimization: Type prediction
+!!! Optimization: Type prediction
 
 To improve the performance of the execution speed of the compiled code by the virtual machine without adding too many constraints on the system, one can implement a technique invented by Dan Ingalls for early versions of Smalltalk called ""Type prediction"".
 
@@ -228,7 +228,7 @@ The bytecode instruction for ==\+== can be encoded in 1 byte as there is no need
 
 The method ==\+== in SmallInteger has to have the same behavior as the inlined operation for ==\+== in the interpreter and can't be changed without changing the interpreter.
 
-!! Hard Inlining of specific messages
+!!! Hard Inlining of specific messages
 
 In some cases, the compiler and virtual machine implementors can decide to inline specific selectors all the time. This is the case in Pharo for example for (identityEqual) == \=\= ==.
 

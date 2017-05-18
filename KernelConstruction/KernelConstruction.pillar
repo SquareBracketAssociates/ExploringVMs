@@ -14,13 +14,13 @@ Goal: build a snapshot, specificities of smalltalk snapshot.
 
 preoptimized / optimized kernel from the bootstrap.
 
-! Theory: Representing objects in memory
+!! Theory: Representing objects in memory
 
 In this theoretical section, the representation in memory of objects is discussed. The discussion goes from the array of bytes conceptually available in the RAM to the object.
 
 The memory representation presented is the one you will implement for your language. Once you have understood it, you will be able to rethink it and maybe change your implementation.
 
-!! Head first: Mapping an object to raw bytes
+!!! Head first: Mapping an object to raw bytes
 
 Let's create an object, look at the raw bytes in memory corresponding to the object and understand what they mean.
 
@@ -78,11 +78,11 @@ Endianness example => where is the format where is the hash.
 
 We've seen most objects, iv ones, not what about collection ?
 
-!! Variable-sized objects
+!!! Variable-sized objects
 
 bytearray & array
 
-!! Discussion: other kind of objects ?
+!!! Discussion: other kind of objects ?
 
 not in this micro kernel
 
@@ -92,11 +92,11 @@ Weak structures for ex for caching
 
 More compact structure: iv and variable and bytes, more compact compiled method, more efficient to interpret.
 
-! Designing a 30 classes Kernel
+!! Designing a 30 classes Kernel
 
 In this section, a 30 classes minimal kernel is proposed. These kernel will be the core of the restricted Smalltalk run.
 
-!! Elements needed in the Kernel
+!!! Elements needed in the Kernel
 
 Multiple things are required to have a Smalltalk system running:
 - nil, true and false.
@@ -127,13 +127,13 @@ Let's look at the micro kernel proposed in *@MicroKernel*.
 Core libraries and VM support
 => they depend on each other, typically maintained by same crew. Performance lies a lot with kernel libraries. Looking at each bytecode / machine code. Discuss intrinsec in Dart aka optimization primitives
 
-! Understanding the 30 classes Kernel
+!! Understanding the 30 classes Kernel
 
-!! Object
+!!! Object
 
   = = ~~ DNU ifNil: perform: printing yourself
 
-!! Behaviors
+!!! Behaviors
 
 Based on your knowledge from the Object-V-Lisp Kernel, draw a class diagram of Behavior, Object, Class and Metaclass as well as all the classes in between. 
 
@@ -143,13 +143,13 @@ Explain what the variable thisClass corresponds to in Metaclass. Wa it possible 
 
 (optional) Explain the difference between a Class Variable and the instance variable of a class.
 
-!! Boolean
+!!! Boolean
 
 How would you implement Boolean in an object language ?
 
 How is ifTrue:ifFalse: implemented conceptually and practically ? If you don’t understand closures very well, explain the implementation of not instead.
 
-!! UndefinedObject
+!!! UndefinedObject
 
 ==UndefinedObject== has a unique instance called ==nil==. This object is used to describe a null state. For example, when an object is created, all its fields reference nil. 
 
@@ -157,13 +157,13 @@ primitive with no answer ?
 
 Default state. Only ifNil: ifNotNil:  not to pollute its API.
 
-!! SmalltalkImage
+!!! SmalltalkImage
 
 globals
 
 specialObjectArray: what are in it and why ?
 
-!! Magnitudes
+!!! Magnitudes
 
 Numbers
 How would you implement numbers using objects ? 
@@ -178,7 +178,7 @@ How is implemented the addition between two numbers ?
 
 Character
 
-!! Collection 
+!!! Collection 
 
 Draw on a paper an inheritance graph which includes OrderedCollection, Array, Set and Object and all the classes needed in between to have the full graph.
 
@@ -192,13 +192,13 @@ Explain the implementation of Set, especially add: and includes:. Your explanati
 
 What is a Dictionnary ? Explain the implementation of a dictionary. The lookup is done using the implementation details of a dictionary to avoid iterating over all the elements for all the superclasses to find the method to activate.
 
-!! Runtime support
+!!! Runtime support
 
 ... Discussed in previous book sections ! 
 
 Onmy Message to discuss slightly
 
-! Exporting the Kernel
+!! Exporting the Kernel
 
 generic idea...
 
@@ -206,25 +206,25 @@ Building the first snapshot.
 
 Addresses are relative to beginning of snapshot.
 
-!! Exporting compiled method
+!!! Exporting compiled method
 
 cross compilation
 
-!! Exporting classes
+!!! Exporting classes
 
 special object array
 
-!! Exporting tables
+!!! Exporting tables
 
 Character and symbol table
 
-! Rethinking the Memory representation
+!! Rethinking the Memory representation
 
 In this section we discuss what was good in this memory representation and what was not. To do so, we firstly discuss how one can evaluate if a memory representation is good or not, then we discuss the application on the design used in this part of the book
 
-!! What is a good Memory Representation ?
+!!! What is a good Memory Representation ?
 
-!!! Compactness
+!!!! Compactness
 
 The first and most critical point of a good memory representation is the compactness. For a given set of objects that represents the average heap the virtual machine will have to handle, how many bytes does the virtual machine need to represent them all ? The memory footprint has to be as little as possible to have a good virtual machine.
 
@@ -234,7 +234,7 @@ For example, in the current design, we use the last object's header field to sto
 
 On the other hand, the size of compiled code depends a lot on the size of the bytecodes. Reducing the memory footprint of compiled code may depend more on changing the bytecode set design. In a similar way, Strings are represented in the micro kernel as an array of Characters. They are the array themselves, and they do not hold an instance variable which is an instance of Array, which is already some kind of memory optimizations as it saves a few bytes per String. One can even do better: in english, most strings hold only ASCII characters which can be encoded in a single byte. Hence, one could design another memory representation of Strings in the form of a byte array, holding directly the ASCII code of each character, to encode most strings and save even more space.
 
-!!! Fast Access
+!!!! Fast Access
 
 The second main evaluation point of a good memory representation for objects is the access speed to the different object features. The idea here is to compute precisely how many instructions the interpreter and the machine code generated by the JIT compiler will need to access specific information about an object. 
 
@@ -268,11 +268,11 @@ Design is way better because faster object format while other instructions are a
 
 at: and at:put: and size perf difference is huge between those 2 representation, and they are performance critical primitives.
 
-!!! Features
+!!!! Features
 
 become, becomeForward, dynamically growing objects such as python or Javascript
 
-!! How can we improve the current design ?
+!!! How can we improve the current design ?
 
 very compact object header: class index, only few bits for GC (though moving then requires allocated table).
 
