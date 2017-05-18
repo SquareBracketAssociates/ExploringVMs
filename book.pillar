@@ -1,0 +1,8 @@
+! Managing the Call Stack
+${inputFile:StackManagement/StackManagement.pillar}$
+
+! Bytecode Compilation
+${inputFile:BytecodeCompilation/BytecodeCompilation.pillar}$
+
+! Kernel Construction
+${inputFile:KernelConstruction/KernelConstruction.pillar}$

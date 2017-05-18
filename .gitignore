@@ -1,6 +1,8 @@
 /Pharo.*
 /play-cache
 /book-result
+/build
+/mustache
 /pharo
 /pharo-ui
 /pharo-vm
