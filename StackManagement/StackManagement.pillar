@@ -13,7 +13,7 @@ This part of the book deals with call stack management, especially when the exec
 
 To master all the concepts exposed, the reader has to implement several interpreters with an increasing level of complexity. An interpreter is a program that executes other programs written in a programming language. All the interpreters are designed to execute code written in a very simple programming language, SmiLang, managing only small integers.
 
-Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Chapters *@ContextInterpreter* and *@ClosureContextInterpreter* and read the Chapters *@StackImplementation* and *@Discussion* to continue reading the book. The Chapters *@StackInterpreter*, *@StackPages*, *@ClosureStackInterpreter1* and *@ClosureStackInterpreter2* deals with interpreters using a native stack and are not required to understand the next parts of the book.
+Although it is recommended to implement all the interpreters described in this part, the reader has only to understand and implement the context interpreters described in Chapters *@ContextInterpreter* and *@ClosureContextInterpreter* and read the Chapters *@StackImplementation* and *@Discussion* to continue reading the book. Chapters *@StackInterpreter*, *@StackPages*, *@ClosureStackInterpreter1* and *@ClosureStackInterpreter2* deal with interpreters using a native stack and are not required to understand the next parts of the book.
 
 !!!!! Concepts
 Readers will learn the following concepts during this tutorial:
@@ -53,9 +53,9 @@ This chapter describes how to implement efficiently a stack. This discussion is 
 
 Different implementations of stacks, detailled with samples of Pharo code, are explained and discussed in the following sections. There is not such a thing as a very efficient ''generic'' stack implementation for the level of performance we need for an execution stack. In fact, depending on different constraints, the developer can decide to implement a stack one way or another way to reach maximum efficiency. 
 
-In high-level languages such as Pharo, people usually use ==OrderedCollection== to represent different more restrictive data structures such as stacks or queues. (SD: I do not get the flow between first sentence and second) Hence, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
+In high-level languages such as Pharo, people usually use the ==OrderedCollection== class to represent data structures such as stacks or queues. In this chapter, the implementations described are usually implemented and used in low level languages, more precisely C, C\+\+ or Rust.
 
-The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are ""not"" part of a conventional stack APIs.
+The conventional APIs of a stack are ==push:==, ==pop== and ==top==. One can consider adding a few other messages, such as ==size==. However, messages such as ==at:==, ==do:== or ==remove:== are ""not"" part of a conventional stack APIs. (SD: I do not understand what you want to say with the last sentence. )
 
 We will start to look at naive implementations (linked-list and array based) and after advanced ones (fixed-sized stack, copying stack and stack page stack).
 
@@ -66,7 +66,7 @@ The first naive implementation is to represent a stack as a linked list. The sta
 
 Figure *@linkedListStack* shows an example of such a stack, where the characters ==$A, $B and $C== were successively pushed.
 
-+Linked List Stack where ==$A, $B and $C== were successively pushed.>file://figures/linkedListStack.pdf|width=58|label=linkedListStack+ 
++Linked List Stack where ==$A, $B and $C== were successively pushed.>file://figures/linkedListStack.pdf|width=50|label=linkedListStack+ 
 
 Here is possible code that could be written to implement a stack using a linked list (we omitted the getters and setters on ==StackElement==).
 
@@ -104,17 +104,19 @@ Stack >> pop
 			value ]
 ]]]
 
-The stack implementation used in Pharo is very similar to this implementation. However, the Pharo ==Stack== has a much larger APIs, most of them being unconventionnal for a stack.
+The implementation of the ==Stack== class in Pharo is very similar to this implementation. However, this class has a much larger APIs, most of them being unconventionnal for a stack.
 
-This implementation has the big advantage that it cannot overflow (as long as there is memory available). In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
+This linked list implementation has the big advantage that it cannot overflow (as long as there is memory available). In addition, the stack does not need to allocate memory for elements that are not yet pushed on stack.
 
 It has however several big problems:
 - each element requires an indirection to keep the reference to the previous element through an instance of ==StackElement==. This has two drawbacks:
--- The memory footprint per element is increased (the stack element requires at least an extra machine word to refer to the previous element).
+-- The memory footprint per element is increased: The stack element requires at least an extra machine word to refer to the previous element).
 -- Accessing an element of the stack requires two memory reads, one to read the instance of ==StackElement==, one to read the element itself.
-- each element can be very far in memory from the the previous element, leading to many CPU cache miss when pushing and popping elements on stack often.
+- each element can be very far in memory from the the previous element, leading to many CPU cache misses when pushing and popping elements on stack often.
 
-This implementation cannot be used directly for a call stack, mostly because it is dog slow. However, this design inspired a better solution as described in one of the following section.
+This implementation cannot be used directly for a call stack, mostly because it is really slow. However, this design inspired a better solution, the stack-page implementation, described in the following sections.
+
+
 
 !!! Naive Implementation: Array 
 @arrayImplStack
@@ -172,16 +174,16 @@ This second naive implementation has two main drawbacks:
 - If the array allocated for the stack is huge whereas the stack uses during most of its lifetime only a very small portion of the array, most of the space allocated for the stack is wasted.
 
 This implementation has the following advantages over the linked list implementation:
-- If the average number of elements on stack is fairly close to the maximum stack size during most of the stack lifetime, then the memory consumption of this implementation is smaller than the previous implementation (SD: this is strange because the wrapper StackElement is consuming more memory no? The average nymber of elements comes out of the blue).
+- If the average number of elements on stack is really close to the maximum stack size during most of the stack lifetime, then the memory consumption of this implementation is smaller than the previous implementation.
 - The stack does not require an extra indirection to access its elements, providing faster access. All the element references are next to each other in memory, hence accessing successively to several elements usually ends up in CPU cache hits, greatly improving the performance.
 
 !!! Advanced Implementations
 
-The advanced implementation are directly inspired from the array implementation. They tackle two main problems:
+The advanced implementations are directly inspired from the array implementation. They tackle two main problems:
 - How to handle stack overflow so that the stack can dynamically grow without wasting too much memory and execution time.
 - How to remove the stack overflow and underflow checks in the ==push== and ==pop== operations to improve their performance.
 
-Next section discusses the case where stack overflow and underflow can't happen. The last two sections deal with dynamic growth and shrink of the stack.
+The next section discusses the case where stack overflow and underflow can't happen. The last two sections deal with dynamic growth and shrink of the stack.
 
 !!! Advanced Implementations: Fixed-sized Stack
 @FixedSizedStack
@@ -190,7 +192,7 @@ For this implementation, we assume that the operations performed on the stack ar
 
 Based on a simple analysis of the operations that will be performed on the stack, the program can also know before creating the stack if there will be a stack underflow or not, and raise an error before creating the stack if this is the case instead of checking at each ==pop== operations.
 
-The stack code or the array implementation can be simplified to remove the stack underflow and overflow checks.
+The stack code of the array implementation can be simplified to remove the stack underflow and overflow checks.
 
 [[[
 Stack >> push: value
@@ -205,7 +207,7 @@ Stack >> pop
 	^ top
 ]]]
 
-Growing the stack is useless in this implementation as the stack can't overflow.
+Note that growing the stack is useless in this implementation as the stack can't overflow.
 
 This implementation is the most efficient possible (modulo some machine specific optimizations). However, it has some strong constraints such as anticipating the maximum size of the stack, so it cannot be used in all the cases where the programmer needs a stack.
 
@@ -213,7 +215,7 @@ In the rest of the book, this implementation of the stack will be referred as th
 
 !!! Advanced Implementations: Copying Stack
 
-This is the approach used by ==OrderedCollection== in Pharo. Growing the stack implies the creation of a larger array with the previous array elements. Here is possible code:
+This is the approach used by ==OrderedCollection== in Pharo. Growing the stack implies the creation of a larger array containing the previous array elements. Here is possible code:
 
 [[[
 Stack >> push: value
@@ -234,14 +236,14 @@ Once the stack has grown, it can push new elements until it overflows again (the
 
 This approach is reasonable but not good enough in our case. There are several problems. 
 
-Firstly, the stack grows but never shrinks, leading to huge memory footprint in some cases. Adding support for stack shrinking is difficult to do without decreasing the performance of ==pop== (it would need an extra check in addition of the stack underflow check). 
+Firstly, the stack grows but never shrinks. This  may lead to huge memory footprint in some cases. Adding support for stack shrinking is difficult to do without decreasing the performance of ==pop== (it would need an extra check in addition of the stack underflow check). 
 
 Secondly, the array used for the internal representation of the stack has a different size depending on the size the stack had when it overflowed the last time. Hence, it is likely that once the stack has grown, the previous array used will need to be garbage collected and can't be directly reused by another instance of stack which would need an array of the same size.
 
 !!! Advanced Implementations: Stack Page Stack
 @StackPageStack
 
-This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in Section *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there. 
+This is the stack implementation usually used for most call stacks. Initially, the stack uses a fixed-size array, called a ""stack page"". When the stack page is full, which corresponds to a stack overflow in the naive array implementation described in Section *@arrayImplStack*, a new stack page is allocated with a pointer back to the previous stack page and the stack keeps growing there (as shown in Figure*stackpageEx1*).
 
 In other words, the stack is represented as a linked list of stack pages. Most ==push== and ==pop== operations are done within a stack page so they are very efficient. From time to time, ==push== and ==pop== operations requires the stack to switch to another page, in a similar way to the linked list implementation of the stack discussed in Section *@LLStack*, which is less efficient but uncommon. 
 
@@ -253,8 +255,8 @@ In fact, this implementation has both the advantages of the array implementation
 
 Here follows a possible implementation where the first element of the stack page (an Array) refers to the previous stack page or nil as shown in *@stackpageEx1*.
 
-+Example of successive operations on a stack with stack pages.>file://figures/stackpageEx1.pdf|width=70|label=stackpageEx1+ 
-SD: stackpointer should be 2 in step3.
++Example of successive operations on a stack with stack pages SD: stackpointer should be 2 in step3. >file://figures/stackpageEx1.pdf|width=70|label=stackpageEx1+ 
+
 
 
 ""Stack initialization.""
@@ -329,7 +331,7 @@ StackedPageStack >> previousStackPage: previousPage
 
 !!!!! Example
 
-We show some  code pushing and popping elements on a stack implemented with stack pages aside from the memory representation of the stack. The following 6 points refer to the numbers shown on Figure *@stackpageEx1* and Figure *@stackpageEx2*.
+We show some  code pushing and popping elements on a stack implemented with stack pages (SD: rm aside from the memory representation of the stack). The following 6 points refer to the numbers shown on Figure *@stackpageEx1* and Figure *@stackpageEx2*.
 
 
 
@@ -340,9 +342,9 @@ We show some  code pushing and popping elements on a stack implemented with stac
 # The value ==$F== is popped from the stack. After popping, there is still a value on the stack page, hence the pop operation is done as the naive array implementation described in Section *@arrayImplStack*.
 # The value ==$E== is popped from the stack. This time, after popping, there are no more values on the stack page. Hence, the stack page is freed. The first value of the page is used to change the reference of the stack page (==array== field) in the stack to the previous stack page. The stack pointer is updated so the top of the stack is the top of the previous stack page.
 
-+Example of successive operations on a stack with stack pages.>file://figures/stackpageEx2.pdf|width=70|label=stackpageEx2+ 
++Example of successive operations on a stack with stack pages. MOve the third line on the right of the picture to get smaller diagrams.>file://figures/stackpageEx2.pdf|width=70|label=stackpageEx2+ 
 
-In this naive Example, stack pages of size 5 were used. It implies that 4 out of 5 ==push== and ==pop== operations are very efficient because they are done within a stack page, and 1 out of 5 operation is less efficient because it needs to handle the stack page switch. At worst, the stack wastes a stack page of memory, 3 fields in this case, if the last stack page is almost empty as in step 3. In addition, there are some memory overhead due each stack page needing to keep a reference to the previous stack page or ==nil==. 
+In this simple example, stack pages of size 5 were used. It implies that 4 out of 5 ==push== and ==pop== operations are very efficient because they are done within a stack page, and 1 out of 5 operation is less efficient because it needs to handle the stack page switch. At worst, the stack wastes a stack page of memory, 3 fields in this case, if the last stack page is almost empty as in step 3. In addition, there are some memory overhead due each stack page needing to keep a reference to the previous stack page or ==nil==. 
 
 In practice, the stack page used are far bigger (usually a few kilobytes), so the overhead of the reference to the previous stack page or ==nil== is negligible, and the stack wastes at worst a few kilobytes of memory if the last page is almost unused.
 
