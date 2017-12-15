@@ -399,10 +399,10 @@ Assuming that the program uses several stacks that all use stack pages of the sa
 !! SmiLang: A Simple Integer Language
 @SmiLang
 
-During this tutorial, the reader will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates small integers (Smis). This chapter describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
+In the following of this book, you will implement several interpreters of the language ""SmiLang"". “Smi” is the nickname for SmallIntegers in several VM development teams, hence SmiLang is a language that just manipulates small integers (Smis). This chapter describes briefly SmiLang, which is a very simple language. SmiLang has only function activations, function returns, temporary variables, and some primitive operations on Smis.
 
 !!! SmiLang Basics
-SmiLang only manipulates Smis: all the variables values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
+SmiLang only manipulates Smis: all the variable values are Smis and are initialized by default to 0.  Functions can only be called through static calls. Every function has to return a value (no procedures). 
 
 SmiLang supports the following programmer level operations: 
 - Definition of temporary variables, constant Smi, and functions.
@@ -464,13 +464,10 @@ exampleSelectors do: [ :each |
 	stream << (SmiCompiler new compilePharoMethod: (SmiExamples>>each)) printString asPillarSourceCode. ].
 ]]]
 
+The  instruction ==storeTemp== reads the value to store on the stack but does not pop it. Therefore the compiler should pop it.  
 
-SD: would be nice to explain why we need to pop after the storetmp 
-
-The  instruction storeTemp reads the value to store on the stack but does not pop it. Therefore the compiler should pop it.  
-
-SD: if we compare pop and returnTop we see that returnTop is really important but unclear: the description above is full of hidden assumption:  push top of stack on the context’s sender or stack frame caller. Pursuing the execution resumes the execution in the calling function. No idea what is context' sender. So having a simple diagram and explanation would help. The point is that the context idea is never introduced. 
-
+SD: Can you add a discussion on the difference between pop and returnTop we see that returnTop is really important but unclear: the description above is full of hidden assumption:  push top of stack on the context’s sender or stack frame caller. Pursuing the execution resumes the execution in the calling function. No idea what is context' sender. So having a simple diagram and explanation would help. The point is that the context idea is never introduced. 
+ReturnTop should really be better explained
 
 !!!! We are set
 
