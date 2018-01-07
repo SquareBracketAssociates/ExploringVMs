@@ -11,6 +11,7 @@ Currently the implementation part (templates and examples) are done in Pharo Sma
 - Clone the repository
 - Install packages related to latex compilation (TeXlive 2016; have a look at [the `dpollet/texlive:pillar` Docker image][docker] used by [Travis][])
 - Run `make pdfbook` to produce the full book (in `build/book.pdf`)
+- You can find a [PDF version of the booklet here ] (https://bintray.com/squarebracketassociates/wip/download_file?file_path=ExploringVMs-wip.pdf)
 
 If it does not work I can send you a precompiled version if you contact me (contact at bottom of document). There is *currently* no alternatives.
 
