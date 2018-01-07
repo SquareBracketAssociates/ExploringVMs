@@ -1,0 +1,27 @@
+{
+    "package": {
+        "name": "booklet-exploringVM",
+        "repo": "wip",
+        "subject": "squarebracketassociates",
+        "desc": "A booklet on stack management for VM",
+        "licenses": ["MIT"],
+        "website_url": "https://github.com/SquareBracketAssociates/ExploringVMs",
+        "issue_tracker_url": "https://github.com/SquareBracketAssociates/ExploringVMs/issues",
+        "vcs_url": "https://github.com/SquareBracketAssociates/ExploringVMs.git",
+        "labels": ["work-in-progress"]
+    },
+
+    "version": {
+        "name": "latest",
+        "desc": "Latest successful build"
+    },
+
+    "files": [
+        {
+            "includePattern": "build/(book).spiral.pdf",
+            "uploadPattern": "ExploringVMs-wip.pdf",
+            "matrixParams": { "override": 1 }
+        }
+    ],
+    "publish": true
+}

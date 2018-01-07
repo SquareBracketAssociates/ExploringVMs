@@ -7,3 +7,13 @@ before_install:
 
 script:
   - docker run --tty --rm --volume $PWD:/work dpollet/texlive:pillar make spiralbook
+  
+deploy:
+- provider: bintray
+  file: .bintray.json
+  on:
+    repo: SquareBracketAssociates/ExploringVMs
+  skip_cleanup: true
+  user: ducasse
+  key:
+    secure: NAu6xu6Cpn0UrCahtMPohCI7Dq8NcFKGLrIV4irnYiUFBMvF0dgAYYnLxvH3e3QYZCPVjRYlJp1SrqNK+RSo0oUTtqQps4DFXwWcQat90oTggVEzlkySnL9RA4uDGgnIdawGq094Qc90Vlncp+qGM7umdJsbWMCs4nCC3khPBpjjZr6p8v5r3OflMBmfZc7rSeLXMt/ovBMYoAT0Xc+LJXnUxpwuRuYnub6/3nHRgI7XULKO38c/I75tjTkNK1BDTOANLJz98gdX74lwpCr5PSGmPQvig/AvKbi6msGjNY0F47G93a2HMi5PsMDKrBw0z7vtvG1iKdslf5/qqVxGEYx+1x4LRuS9dqkNQiy8tqWOsceNbP3V4UgSkkQa6obG/ek1xUfc9tUS6US9ntqfNreUWLSwovi55g1zdzl2mFYV4zFh8ry12hXyKo5c+M5IHNI45xclNyJYWNknXa93BETxvX+GClRzYZW1NUBR66gDqmgZCMjXcTW9ejo3iI31xW70N/K1e4hblNlK8uFEbuCekGBudnm1JGjRaPsmk1JpAhE+7Jkq5MsCiyousmo1r2q3FuqhEhnRerrPYt5HzK4i5mSDd8wgWuYU6QATJiU6CVPjFJDaUZutxQnnHkTkC3U0WZj8uK7mz+Z1MI7OWPl25sPcEVafQSSlt5SzU3I=
